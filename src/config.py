@@ -1,7 +1,8 @@
 import os
 
-root_dir = os.path.expanduser("~")
-root_dir = os.path.join(root_dir, "Desktop")
+# root_dir = os.path.expanduser("~")
+# root_dir = os.path.join(root_dir, "Desktop")
+root_dir = '/mnt'
 
 print_interval = 100
 save_model_iter = 1000
