@@ -7,11 +7,11 @@ root_dir = '/mnt'
 print_interval = 100
 save_model_iter = 1000
 
-train_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/twitter_url/chunked/train_*")
-eval_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/twitter_url/chunked/val_*")
-decode_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/twitter_url/chunked/test_*")
-vocab_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/twitter_url/vocab")
-log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_twitter")
+train_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/chunked/train_*")
+eval_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/chunked/val_*")
+decode_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/chunked/test_*")
+vocab_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/vocab")
+log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor")
 
 # Hyperparameters
 mode = "MLE"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*
