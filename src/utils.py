@@ -4,6 +4,8 @@ import os
 # import pyrouge
 import logging
 
+SPECIAL_TOKENS = ['<expr>', '<unvar>', '<equl>', '<arrw>']
+
 def print_results(article, abstract, decoded_output):
   print ("")
   print('ARTICLE:  %s', article)
@@ -84,6 +86,39 @@ def write_for_rouge(reference_sents, decoded_words, ex_index,
     for idx, sent in enumerate(decoded_sents):
       f.write(sent) if idx == len(decoded_sents) - 1 else f.write(sent + "\n")
 
+def reverse_tokenizer(sentence):
+  sents = sentence.split()
+  # E.g. "<EXPR>" -> " <EXPR>"
+  sents = [" " + sent if sent in SPECIAL_TOKENS else sent for sent in sents]
+
+  return "".join(sents).replace("▁", " ")
+
+def write_for_result(input_sents, reference_sents, decoded_words, _result_path):
+  decoded_sents = []
+  while len(decoded_words) > 0:
+    try:
+      fst_period_idx = decoded_words.index(".")
+    except ValueError:
+      fst_period_idx = len(decoded_words)
+    sent = decoded_words[:fst_period_idx + 1]
+    decoded_words = decoded_words[fst_period_idx + 1:]
+    decoded_sents.append(' '.join(sent))
+
+  # remove "▁"
+  input_s = reverse_tokenizer(input_sents)
+  reference_s = reverse_tokenizer(reference_sents[0])
+  decoded_s = reverse_tokenizer(decoded_sents[0])
+
+  if os.path.isfile(_result_path):
+    with open(_result_path, "a") as f:
+      print("x:" + input_s, file=f)
+      print("y:" + reference_s, file=f)
+      print("y_pred:" + decoded_s + "\n", file=f)
+  else:
+    with open(_result_path, "w") as f:
+      print("x:" + input_s, file=f)
+      print("y:" + reference_s, file=f)
+      print("y_pred:" + decoded_s + "\n", file=f)
 
 def gen_ngram(sent, n=2):
     words = sent.split()

@@ -14,7 +14,7 @@ import data, config
 from batcher import Batcher
 from data import Vocab
 from model import Model
-from utils import write_for_rouge, rouge_eval, rouge_log
+from utils import write_for_rouge, rouge_eval, rouge_log, write_for_result
 from train_util import get_input_from_batch
 
 
@@ -51,6 +51,10 @@ class BeamSearch(object):
         self._decode_dir = os.path.join(config.log_root, 'decode_%s' % (model_name))
         self._rouge_ref_dir = os.path.join(self._decode_dir, 'rouge_ref')
         self._rouge_dec_dir = os.path.join(self._decode_dir, 'rouge_dec_dir')
+        self._result_path = os.path.join(self._decode_dir, 'result.txt')
+        # remove result file if exist
+        if os.path.isfile(self._result_path):
+            os.remove(self._result_path)
         for p in [self._decode_dir, self._rouge_ref_dir, self._rouge_dec_dir]:
             if not os.path.exists(p):
                 os.mkdir(p)
@@ -183,13 +187,17 @@ class BeamSearch(object):
             except ValueError:
                 decoded_words = decoded_words
 
+            original_articles = batch.original_articles[0]
             original_abstracts = batch.original_abstracts_sents[0]
             reference = original_abstracts[0].strip().split()
             bleu = nltk.translate.bleu_score.sentence_bleu([reference], decoded_words, weights = (0.5, 0.5))
             bleu_scores.append(bleu)
 
-            write_for_rouge(original_abstracts, decoded_words, counter,
-                            self._rouge_ref_dir, self._rouge_dec_dir)
+            # write_for_rouge(original_abstracts, decoded_words, counter,
+            #                 self._rouge_ref_dir, self._rouge_dec_dir)
+
+            write_for_result(original_articles, original_abstracts, decoded_words, self._result_path)
+
             counter += 1
             if counter % 1000 == 0:
                 print('%d example in %d sec'%(counter, time.time() - start))
