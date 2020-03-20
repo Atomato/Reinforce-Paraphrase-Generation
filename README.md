@@ -1,12 +1,16 @@
 # A Unified Reinforcement Learning Framework for Pointer Generator Model
 This repository contains the data and code for the paper ["An Empirical Comparison on Imitation Learning and Reinforcement Learning for Paraphrase Generation"](https://arxiv.org/abs/1908.10835).
 
+## Requirement
+### Install NLTK
+`pip install -U nltk`
+
 ## Useage
 ### Training
 1. Model Setting: modify the path where the model will be saved.
 ```
 vim config.py
-log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_twitter")
+log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor")
 ```
 
 2. Pre-train: train the standard pointer-generator model with supervised learning from scratch.
@@ -14,27 +18,22 @@ log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_twitter")
 python train.py
 ```
 
-3. Fine-tune: modify the training mode and the path where the fine-tuned model will be saved.
+3. Fine-tune: modify the training mode and the path where the fine-tuned model will be saved (mode: "MLE" -> "DAGGER").
 ```
 vim config.py
-log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_rl")
-mode = "RL"
+log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor_dagger")
+mode = "DAGGER"
 ```
 Fine tune the pointer-generator model with REINFORCE algorithm.
 ```
-python train.py -m ../log_twitter/best_model/model_best_XXXXX
+python train.py -m ../log_kor/best_model/model_best_XXXXX
 ```
 
 
 ### Decoding & Evaluation
-1. Decoding: first, specify the model path.
+1. Decoding: Apply beam search to generate sentences on test set with the model path:
 ```
-vim config.py
-log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_twitter")
-```
-Second, apply beam search to generate sentences on test set:
-```
-python decode.py ../log_twitter/best_model/model_best_XXXXX
+python decode.py ../log_kor_xxxx/best_model/model_best_XXXXX
 ```
 
 2. Evaluation: 
