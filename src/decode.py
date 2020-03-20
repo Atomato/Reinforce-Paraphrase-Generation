@@ -48,7 +48,8 @@ class Beam(object):
 class BeamSearch(object):
     def __init__(self, model_file_path):
         model_name = os.path.basename(model_file_path)
-        self._decode_dir = os.path.join(config.log_root, 'decode_%s' % (model_name))
+        log_root = os.path.dirname(os.path.dirname(model_file_path))
+        self._decode_dir = os.path.join(log_root, 'decode_%s' % (model_name))
         self._rouge_ref_dir = os.path.join(self._decode_dir, 'rouge_ref')
         self._rouge_dec_dir = os.path.join(self._decode_dir, 'rouge_dec_dir')
         self._result_path = os.path.join(self._decode_dir, 'result.txt')
