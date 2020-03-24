@@ -215,6 +215,9 @@ class BeamSearch(object):
         rouge_log(results_dict, self._decode_dir)
         '''
 
+        with open(self._result_path, "a") as f:
+            print('Average BLEU score:', np.mean(bleu_scores), file=f)
+
 
 if __name__ == '__main__':
 	model_filename = sys.argv[1]
