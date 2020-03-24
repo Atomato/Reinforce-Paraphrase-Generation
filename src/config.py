@@ -27,7 +27,7 @@ max_enc_steps= 20
 max_dec_steps= 20
 beam_size= 8
 min_dec_steps= 5
-vocab_size= 5000
+vocab_size= 1300 # 5000
 
 max_iterations = 5000000
 lr = 1e-5
