@@ -5,7 +5,7 @@ import os
 root_dir = '/mnt'
 
 print_interval = 100
-save_model_iter = 1000
+save_model_iter = 100 # 1000
 
 train_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/chunked/train_*")
 eval_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/chunked/val_*")
