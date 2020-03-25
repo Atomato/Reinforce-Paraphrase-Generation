@@ -11,10 +11,10 @@ train_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/k
 eval_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/chunked/val_*")
 decode_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/chunked/test_*")
 vocab_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/vocab")
-log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor")
+log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor_rl_eval")
 
 # Hyperparameters
-mode = "MLE"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*
+mode = "RL"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*
 alpha = 1.0
 beta = 1.0
 k1 = 0.9999

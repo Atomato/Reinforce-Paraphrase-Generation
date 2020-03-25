@@ -57,8 +57,9 @@ def get_output_from_batch(batch, use_cuda):
     return dec_batch, dec_padding_mask, max_dec_len, dec_lens_var, target_batch
 
 
-def compute_reward(batch, decode_batch, vocab, mode, use_cuda):
-    target_sents = batch.original_abstracts  # list of string
+def compute_reward(batch, decode_batch, vocab, mode, use_cuda, evaluator):
+    # target_sents = batch.original_abstracts  # list of string
+    target_sents = batch.original_articles  # list of string
     decode_batch = decode_batch.cpu().numpy()  # B x S x L
     output_ids = decode_batch[:, :, 1:]
     all_rewards = torch.zeros((config.batch_size, config.sample_size)) # B x S
@@ -74,7 +75,8 @@ def compute_reward(batch, decode_batch, vocab, mode, use_cuda):
             except ValueError:
                 words = words
             decode_sent = ' '.join(words)
-            all_rewards[i, j] = rouge_2(target_sents[i], decode_sent)
+            # all_rewards[i, j] = rouge_2(target_sents[i], decode_sent)
+            all_rewards[i, j] = evaluator.reward(target_sents[i], decode_sent)
     batch_avg_reward = torch.mean(all_rewards, dim=1, keepdim=True)  # B x 1
     
     ones = torch.ones((config.batch_size, config.sample_size))

@@ -19,6 +19,8 @@ from utils import calc_running_avg_loss
 from train_util import get_input_from_batch, get_output_from_batch, compute_reward, gen_preds
 from eval import Evaluate
 
+from evaluator.evaluator import Evaluator
+
 use_cuda = config.use_gpu and torch.cuda.is_available()
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
@@ -41,6 +43,9 @@ class Train(object):
         if not os.path.exists(self.eval_log):
             os.mkdir(self.eval_log)
         self.summary_writer = tf.compat.v1.summary.FileWriter(self.eval_log)
+
+        # rewarding module
+        self.evaluator = Evaluator()
 
 
     def save_model(self, running_avg_loss, iter, mode):
@@ -142,7 +147,7 @@ class Train(object):
 
         # compute the REINFORCE score        
         nll = torch.sum(torch.stack(nll_list, 2), 2)  # B x S
-        all_rewards, avg_reward = compute_reward(batch, gen_summary, self.vocab, config.mode, use_cuda) # B x S, 1
+        all_rewards, avg_reward = compute_reward(batch, gen_summary, self.vocab, config.mode, use_cuda, self.evaluator) # B x S, 1
         batch_loss = torch.sum(nll * all_rewards, dim=1)  # B
         loss = torch.mean(batch_loss)
 
@@ -227,3 +232,5 @@ if __name__ == '__main__':
     
     train_processor = Train()
     train_processor.trainIters(config.max_iterations, args.model_file_path)
+
+    train_processor.evaluator.close()
