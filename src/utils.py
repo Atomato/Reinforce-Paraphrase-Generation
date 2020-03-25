@@ -91,7 +91,7 @@ def reverse_tokenizer(sentence):
   # E.g. "<EXPR>" -> " <EXPR>"
   sents = [" " + sent if sent in SPECIAL_TOKENS else sent for sent in sents]
 
-  return "".join(sents).replace("▁", " ")
+  return "".join(sents).replace("▁", " ").strip()
 
 def write_for_result(input_sents, reference_sents, decoded_words, _result_path):
   decoded_sents = []
@@ -111,14 +111,14 @@ def write_for_result(input_sents, reference_sents, decoded_words, _result_path):
 
   if os.path.isfile(_result_path):
     with open(_result_path, "a") as f:
-      print("x:" + input_s, file=f)
-      print("y:" + reference_s, file=f)
-      print("y_pred:" + decoded_s + "\n", file=f)
+      print("x:\t\t" + input_s, file=f)
+      print("y:\t\t" + reference_s, file=f)
+      print("y_pred:\t" + decoded_s + "\n", file=f)
   else:
     with open(_result_path, "w") as f:
-      print("x:" + input_s, file=f)
-      print("y:" + reference_s, file=f)
-      print("y_pred:" + decoded_s + "\n", file=f)
+      print("x:\t\t" + input_s, file=f)
+      print("y:\t\t" + reference_s, file=f)
+      print("y_pred:\t" + decoded_s + "\n", file=f)
 
 def gen_ngram(sent, n=2):
     words = sent.split()
