@@ -2,16 +2,20 @@ import os
 
 # root_dir = os.path.expanduser("~")
 # root_dir = os.path.join(root_dir, "Desktop")
-root_dir = '/mnt'
+root_dir = os.path.join(os.getcwd(),'..')
 
 print_interval = 100
-save_model_iter = 1000
+save_model_iter = 100
 
-train_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/chunked/train_*")
-eval_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/chunked/val_*")
-decode_data_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/chunked/test_*")
-vocab_path = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/data/kor/vocab")
-log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor")
+train_data_path = os.path.join(root_dir, "data/kor/chunked/train_*")
+eval_data_path = os.path.join(root_dir, "data/kor/chunked/val_*")
+decode_data_path = os.path.join(root_dir, "data/kor/chunked/test_*")
+vocab_path = os.path.join(root_dir, "data/kor/vocab")
+emb_v_path = os.path.join(root_dir, "data/kor/word_emb.txt")
+emb_list_path = os.path.join(root_dir, "data/kor/word_list.txt")
+log_root = os.path.join(root_dir, "log_kor")
+
+
 
 # Hyperparameters
 mode = "MLE"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*
@@ -23,8 +27,8 @@ hidden_dim= 256
 emb_dim= 128
 batch_size= 8
 sample_size= 4
-max_enc_steps= 20
-max_dec_steps= 20
+max_enc_steps= 50
+max_dec_steps= 50
 beam_size= 8
 min_dec_steps= 5
 vocab_size= 5000

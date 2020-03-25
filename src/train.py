@@ -10,14 +10,16 @@ import numpy as np
 from model import Model
 from torch.nn.utils import clip_grad_norm_
 from torch.optim import Adam, Adagrad
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 import config
 from batcher import Batcher
 from data import Vocab
 from utils import calc_running_avg_loss
-from train_util import get_input_from_batch, get_output_from_batch, compute_reward, gen_preds
+from train_util import *
 from eval import Evaluate
+
 
 use_cuda = config.use_gpu and torch.cuda.is_available()
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
@@ -69,9 +71,9 @@ class Train(object):
         return train_model_path
     
 
-    def setup_train(self, model_file_path=None):
+    def setup_train(self, model_file_path=None, emb_v_path=None, emb_list_path = None, vocab = None):
         self.model = Model(model_file_path)
-
+        set_embedding(self.model, emb_v_path = emb_v_path, emb_list_path = emb_list_path, vocab = self.vocab)
         params = list(self.model.encoder.parameters()) + list(self.model.decoder.parameters()) + \
                  list(self.model.reduce_state.parameters())
         initial_lr = config.lr_coverage if config.is_coverage else config.lr
@@ -157,7 +159,7 @@ class Train(object):
 
 
     def trainIters(self, n_iters, model_file_path=None):
-        iter, running_avg_loss = self.setup_train(model_file_path)
+        iter, running_avg_loss = self.setup_train(model_file_path, emb_v_path=config.emb_v_path, emb_list_path=config.emb_list_path, vocab=self.vocab)
         min_val_loss = np.inf
         
         alpha = config.alpha
