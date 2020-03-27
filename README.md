@@ -18,11 +18,11 @@ log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor")
 python train.py
 ```
 
-3. Fine-tune: modify the training mode and the path where the fine-tuned model will be saved (mode: "MLE" -> "DAGGER").
+3. Fine-tune: modify the training mode and the path where the fine-tuned model will be saved (mode: "MLE" -> "RL").
 ```
 vim config.py
-log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor_dagger")
-mode = "DAGGER"
+log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor_rl")
+mode = "RL"
 ```
 Fine tune the pointer-generator model with REINFORCE algorithm.
 ```
@@ -38,7 +38,7 @@ python decode.py ../log_kor_xxxx/best_model/model_best_XXXXX
 
 2. Result: The result.txt will be made in the path:
 ```
-../log_kor_xxxx/decode_model_best_XXXXX/result.txt
+../log_kor_xxxx/decode_model_best_XXXXX/result_model_best_XXXXX.txt
 ```
 
 3. Evaluation: 
