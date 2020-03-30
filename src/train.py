@@ -15,7 +15,7 @@ import tensorflow as tf
 import config
 from batcher import Batcher
 from data import Vocab
-from utils import calc_running_avg_loss
+from utils import calc_running_avg_loss, print_log
 from train_util import get_input_from_batch, get_output_from_batch, compute_reward, gen_preds
 from eval import Evaluate
 
@@ -159,6 +159,10 @@ class Train(object):
     def trainIters(self, n_iters, model_file_path=None):
         iter, running_avg_loss = self.setup_train(model_file_path)
         min_val_loss = np.inf
+
+        # log file path
+        log_path = os.path.join(config.log_root, 'log')
+        log = open(log_path, 'w')
         
         alpha = config.alpha
         beta = config.beta
@@ -198,7 +202,8 @@ class Train(object):
             iter += 1
             
             if iter % config.print_interval == 0:
-                print('steps %d, current_loss: %f, avg_reward: %f' % (iter, loss, avg_reward))
+                print_log('steps %d, current_loss: %f, avg_reward: %f' % \
+                                (iter, loss, avg_reward), file=log)
             
             if iter % config.save_model_iter == 0:
                 model_file_path = self.save_model(running_avg_loss, iter, mode='train')
@@ -207,14 +212,16 @@ class Train(object):
                 if val_avg_loss < min_val_loss:
                     min_val_loss = val_avg_loss
                     best_model_file_path = self.save_model(running_avg_loss, iter, mode='eval')
-                    print('Save best model at %s' % best_model_file_path)
-                print('steps %d, train_loss: %f, val_loss: %f' % (iter, loss, val_avg_loss))
+                    print_log('Save best model at %s' % best_model_file_path, file=log)
+                print_log('steps %d, train_loss: %f, val_loss: %f' % \
+                                        (iter, loss, val_avg_loss), file=log)
                 # write val_loss into tensorboard
                 loss_sum = tf.compat.v1.Summary()
                 loss_sum.value.add(tag='val_avg_loss', simple_value=val_avg_loss)
                 self.summary_writer.add_summary(loss_sum, global_step=iter)
                 self.summary_writer.flush()
 
+        log.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train script")

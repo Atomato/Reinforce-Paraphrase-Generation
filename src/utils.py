@@ -154,3 +154,10 @@ def rouge_2(gold_sent, decode_sent):
     else:
         f1_score = 2*recall*precision/(recall+precision)
     return f1_score
+
+# print log info on SCREEN and LOG file simultaneously
+def print_log(*args, **kwargs):
+    print(*args)
+    if len(kwargs) > 0:
+        print(*args, **kwargs)
+    return None
