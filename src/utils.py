@@ -112,12 +112,12 @@ def write_for_result(input_sents, reference_sents, decoded_words, _result_path):
   if os.path.isfile(_result_path):
     with open(_result_path, "a") as f:
       print("x:\t\t" + input_s, file=f)
-      print("y:\t\t" + reference_s, file=f)
+      # print("y:\t\t" + reference_s, file=f)
       print("y_pred:\t" + decoded_s + "\n", file=f)
   else:
     with open(_result_path, "w") as f:
       print("x:\t\t" + input_s, file=f)
-      print("y:\t\t" + reference_s, file=f)
+      # print("y:\t\t" + reference_s, file=f)
       print("y_pred:\t" + decoded_s + "\n", file=f)
 
 def gen_ngram(sent, n=2):
