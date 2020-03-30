@@ -31,7 +31,7 @@ class Train(object):
         time.sleep(5)
         
         if not os.path.exists(config.log_root):
-            os.mkdir(config.log_root)
+            os.makedirs(config.log_root)
 
         self.model_dir = os.path.join(config.log_root, 'train_model')
         if not os.path.exists(self.model_dir):
