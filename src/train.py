@@ -10,8 +10,12 @@ import numpy as np
 from model import Model
 from torch.nn.utils import clip_grad_norm_
 from torch.optim import Adam, Adagrad
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+
+import tensorflow as tf
+# if tensorflow version is over v2, disable v2 behavior
+if int(tf.__version__[0]) > 1:
+    import tensorflow.compat.v1 as tf
+    tf.disable_v2_behavior()
 
 import config
 from batcher import Batcher
