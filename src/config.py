@@ -5,7 +5,7 @@ import os
 root_dir = os.path.join(os.getcwd(),'..')
 
 print_interval = 100
-save_model_iter = 100
+
 
 train_data_path = os.path.join(root_dir, "data/kor/chunked/train_*")
 eval_data_path = os.path.join(root_dir, "data/kor/chunked/val_*")
@@ -14,7 +14,6 @@ vocab_path = os.path.join(root_dir, "data/kor/vocab")
 emb_v_path = os.path.join(root_dir, "data/kor/word_emb.txt")
 emb_list_path = os.path.join(root_dir, "data/kor/word_list.txt")
 log_root = os.path.join(root_dir, "log_kor")
-
 
 
 # Hyperparameters
@@ -27,11 +26,13 @@ hidden_dim= 256
 emb_dim= 128
 batch_size= 8
 sample_size= 4
-max_enc_steps= 50
-max_dec_steps= 50
+
+max_enc_steps= 50 # 20
+max_dec_steps= 50 # 20
+
 beam_size= 8
 min_dec_steps= 5
-vocab_size= 5000
+vocab_size= 1300 # 5000
 
 max_iterations = 5000000
 lr = 1e-5

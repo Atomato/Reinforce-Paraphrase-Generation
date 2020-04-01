@@ -52,7 +52,7 @@ class BeamSearch(object):
         self._decode_dir = os.path.join(log_root, 'decode_%s' % (model_name))
         self._rouge_ref_dir = os.path.join(self._decode_dir, 'rouge_ref')
         self._rouge_dec_dir = os.path.join(self._decode_dir, 'rouge_dec_dir')
-        self._result_path = os.path.join(self._decode_dir, 'result.txt')
+        self._result_path = os.path.join(self._decode_dir, 'result_%s.txt' % (model_name))
         # remove result file if exist
         if os.path.isfile(self._result_path):
             os.remove(self._result_path)
@@ -214,6 +214,9 @@ class BeamSearch(object):
         results_dict = rouge_eval(self._rouge_ref_dir, self._rouge_dec_dir)
         rouge_log(results_dict, self._decode_dir)
         '''
+
+        with open(self._result_path, "a") as f:
+            print('Average BLEU score:', np.mean(bleu_scores), file=f)
 
 
 if __name__ == '__main__':
