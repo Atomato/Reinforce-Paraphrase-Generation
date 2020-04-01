@@ -206,7 +206,7 @@ class BeamSearch(object):
 
             batch = self.batcher.next_batch()
         
-        print('Average BLEU score:', np.mean(bleu_scores))
+        # print('Average BLEU score:', np.mean(bleu_scores))
         '''
         # uncomment this if you successfully install `pyrouge`
         print("Decoder has finished reading dataset for single_pass.")
@@ -215,8 +215,8 @@ class BeamSearch(object):
         rouge_log(results_dict, self._decode_dir)
         '''
 
-        with open(self._result_path, "a") as f:
-            print('Average BLEU score:', np.mean(bleu_scores), file=f)
+        # with open(self._result_path, "a") as f:
+        #     print('Average BLEU score:', np.mean(bleu_scores), file=f)
 
 
 if __name__ == '__main__':
