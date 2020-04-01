@@ -36,12 +36,17 @@ python train.py -m ../log/MLE/best_model/model_best_XXXXX
 python decode.py ../log/{MODE NAME}/best_model/model_best_XXXXX
 ```
 
-2. Result: The result.txt will be made in the path:
+2. Result: The result.txt will be made in following path:
 ```
 ../log/{MODE NAME}/decode_model_best_XXXXX/result_model_best_XXXXX.txt
 ```
 
-3. Evaluation: 
-	- The average BLEU score will show up automatically in the terminal after finishing decoding.
+3. Log file: The log on the train and validation loss will be made in following path:
+```
+../log/{MODE NAME}/log
+```
+
+4. Evaluation: 
+	- The average BLEU score on the validation set will show up automatically in the terminal after finishing decoding.
 	
 	- If you want to get the ROUGE scores, you should first intall `pyrouge`, here is the [guidance](https://ireneli.eu/2018/01/11/working-with-rouge-1-5-5-evaluation-metric-in-python/). Then, you can uncomment the code snippet specified in `utils.py` and `decode.py`. Finally, run `decode.py` to get the ROUGE scores.
