@@ -10,7 +10,7 @@ This repository contains the data and code for the paper ["An Empirical Comparis
 1. Model Setting: modify the path where the model will be saved.
 ```
 vim config.py
-log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor")
+log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log/MLE")
 ```
 
 2. Pre-train: train the standard pointer-generator model with supervised learning from scratch.
@@ -18,30 +18,35 @@ log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor")
 python train.py
 ```
 
-3. Fine-tune: modify the training mode and the path where the fine-tuned model will be saved (mode: "MLE" -> "DAGGER").
+3. Fine-tune: modify the training mode and the path where the fine-tuned model will be saved (mode: "MLE" -> "RL").
 ```
 vim config.py
-log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log_kor_dagger")
-mode = "DAGGER"
+log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log/RL")
+mode = "RL"
 ```
 Fine tune the pointer-generator model with REINFORCE algorithm.
 ```
-python train.py -m ../log_kor/best_model/model_best_XXXXX
+python train.py -m ../log/MLE/best_model/model_best_XXXXX
 ```
 
 
 ### Decoding & Evaluation
 1. Decoding: Apply beam search to generate sentences on test set with the model path:
 ```
-python decode.py ../log_kor_xxxx/best_model/model_best_XXXXX
+python decode.py ../log/{MODE NAME}/best_model/model_best_XXXXX
 ```
 
-2. Result: The result.txt will be made in the path:
+2. Result: The result.txt will be made in following path:
 ```
-../log_kor_xxxx/decode_model_best_XXXXX/result.txt
+../log/{MODE NAME}/decode_model_best_XXXXX/result_model_best_XXXXX.txt
 ```
 
-3. Evaluation: 
-	- The average BLEU score will show up automatically in the terminal after finishing decoding.
+3. Log file: The log on the train and validation loss will be made in following path:
+```
+../log/{MODE NAME}/log
+```
+
+4. Evaluation: 
+	- The average BLEU score on the validation set will show up automatically in the terminal after finishing decoding.
 	
 	- If you want to get the ROUGE scores, you should first intall `pyrouge`, here is the [guidance](https://ireneli.eu/2018/01/11/working-with-rouge-1-5-5-evaluation-metric-in-python/). Then, you can uncomment the code snippet specified in `utils.py` and `decode.py`. Finally, run `decode.py` to get the ROUGE scores.

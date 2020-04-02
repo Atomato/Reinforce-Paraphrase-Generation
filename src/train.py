@@ -10,13 +10,18 @@ import numpy as np
 from model import Model
 from torch.nn.utils import clip_grad_norm_
 from torch.optim import Adam, Adagrad
+
 import tensorflow as tf
+# if tensorflow version is over v2, disable v2 behavior
+if int(tf.__version__[0]) > 1:
+    import tensorflow.compat.v1 as tf
+    tf.disable_v2_behavior()
 
 import config
 from batcher import Batcher
 from data import Vocab
-from utils import calc_running_avg_loss
-from train_util import get_input_from_batch, get_output_from_batch, compute_reward, gen_preds
+from train_util import *
+from utils import calc_running_avg_loss, print_log
 from eval import Evaluate
 
 from evaluator.evaluator import Evaluator
@@ -33,7 +38,7 @@ class Train(object):
         time.sleep(5)
         
         if not os.path.exists(config.log_root):
-            os.mkdir(config.log_root)
+            os.makedirs(config.log_root)
 
         self.model_dir = os.path.join(config.log_root, 'train_model')
         if not os.path.exists(self.model_dir):
@@ -74,9 +79,9 @@ class Train(object):
         return train_model_path
     
 
-    def setup_train(self, model_file_path=None):
+    def setup_train(self, model_file_path=None, emb_v_path=None, emb_list_path = None, vocab = None):
         self.model = Model(model_file_path)
-
+        set_embedding(self.model, emb_v_path = emb_v_path, emb_list_path = emb_list_path, vocab = self.vocab)
         params = list(self.model.encoder.parameters()) + list(self.model.decoder.parameters()) + \
                  list(self.model.reduce_state.parameters())
         initial_lr = config.lr_coverage if config.is_coverage else config.lr
@@ -162,8 +167,12 @@ class Train(object):
 
 
     def trainIters(self, n_iters, model_file_path=None):
-        iter, running_avg_loss = self.setup_train(model_file_path)
+        iter, running_avg_loss = self.setup_train(model_file_path, emb_v_path=config.emb_v_path, emb_list_path=config.emb_list_path, vocab=self.vocab)
         min_val_loss = np.inf
+
+        # log file path
+        log_path = os.path.join(config.log_root, 'log')
+        log = open(log_path, 'w')
         
         alpha = config.alpha
         beta = config.beta
@@ -203,7 +212,8 @@ class Train(object):
             iter += 1
             
             if iter % config.print_interval == 0:
-                print('steps %d, current_loss: %f, avg_reward: %f' % (iter, loss, avg_reward))
+                print_log('steps %d, current_loss: %f, avg_reward: %f' % \
+                                (iter, loss, avg_reward), file=log)
             
             if iter % config.save_model_iter == 0:
                 model_file_path = self.save_model(running_avg_loss, iter, mode='train')
@@ -212,14 +222,16 @@ class Train(object):
                 if val_avg_loss < min_val_loss:
                     min_val_loss = val_avg_loss
                     best_model_file_path = self.save_model(running_avg_loss, iter, mode='eval')
-                    print('Save best model at %s' % best_model_file_path)
-                print('steps %d, train_loss: %f, val_loss: %f' % (iter, loss, val_avg_loss))
+                    print_log('Save best model at %s' % best_model_file_path, file=log)
+                print_log('steps %d, train_loss: %f, val_loss: %f' % \
+                                        (iter, loss, val_avg_loss), file=log)
                 # write val_loss into tensorboard
                 loss_sum = tf.compat.v1.Summary()
                 loss_sum.value.add(tag='val_avg_loss', simple_value=val_avg_loss)
                 self.summary_writer.add_summary(loss_sum, global_step=iter)
                 self.summary_writer.flush()
 
+        log.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train script")

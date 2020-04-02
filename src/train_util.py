@@ -4,6 +4,7 @@ import torch
 import config
 import data
 from utils import rouge_2
+import sys
 
 
 def get_input_from_batch(batch, use_cuda):
@@ -107,3 +108,29 @@ def gen_preds(samples_batch, use_cuda):
             else:
                 latest_batch[i,j] = 0 # UNK_TOKEN
     return latest_batch
+
+def set_embedding(model, emb_v_path, emb_list_path, vocab):
+    # Use random initialization if path is None
+    if emb_v_path is None or emb_list_path is None or vocab is None : return
+         
+    vocab_map = vocab._word_to_id
+    with open(emb_list_path,'rt',encoding='utf8') as f: 
+        emb_list = [line.strip() for line in f]
+    emb_v = np.genfromtxt(emb_v_path)
+
+    # initialize embedding with truncated normal
+    temp_emb = np.random.randn(config.vocab_size, config.emb_dim)*config.trunc_norm_init_std
+
+    assign_cnt = 0
+    for voc_, vec_ in zip(emb_list, emb_v):
+        try: 
+            temp_emb[vocab_map[voc_]] = vec_
+            assign_cnt += 1
+        except: 
+            pass
+    print('vocab counts : {}'.format(len(vocab_map)))
+    print('assigned vocab counts : {}({:.2f}%)'.format(assign_cnt, assign_cnt*100.0/len(vocab_map)))
+
+    # tie encoder/decoder embedding
+    model.encoder.embedding.weight = torch.nn.Parameter(torch.from_numpy(temp_emb).float())
+    model.decoder.embedding.weight = model.encoder.embedding.weight
