@@ -3,7 +3,6 @@ import numpy as np
 
 UNKNOWN = '<UNK>'
 PADDING = '<PAD>'
-EQ = '<EQ>'
 CATEGORIE_ID = {'contradiction' : 0, 'entailment' : 1}
 
 # init embeddings randomly
@@ -36,7 +35,6 @@ def load_vocab(vocabPath, threshold = 0):
     index = 2
     vocab[PADDING] = 0
     vocab[UNKNOWN] = 1
-    vocab[EQ] = 2
     with open(vocabPath, encoding='utf-8') as f:
         for line in f:
             items = [v.strip() for v in line.split('||')]
