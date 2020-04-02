@@ -46,13 +46,22 @@ class Beam(object):
 
 
 class BeamSearch(object):
-    def __init__(self, model_file_path):
+    def __init__(self, model_file_path, data_path, data_class='val'):
+        self.data_class = data_class
+        if self.data_class not in  ['val', 'test']:
+            print("data_class must be 'val' or 'test'.")
+            raise ValueError
+
+        # model_file_path e.g. --> ../log/{MODE NAME}/best_model/model_best_XXXXX
         model_name = os.path.basename(model_file_path)
+        # log_root e.g. --> ../log/{MODE NAME}/
         log_root = os.path.dirname(os.path.dirname(model_file_path))
+        # _decode_dir e.g. --> ../log/{MODE NAME}/decode_model_best_XXXXX/
         self._decode_dir = os.path.join(log_root, 'decode_%s' % (model_name))
         self._rouge_ref_dir = os.path.join(self._decode_dir, 'rouge_ref')
         self._rouge_dec_dir = os.path.join(self._decode_dir, 'rouge_dec_dir')
-        self._result_path = os.path.join(self._decode_dir, 'result_%s.txt' % (model_name))
+        self._result_path = os.path.join(self._decode_dir, 'result_%s_%s.txt' \
+                                                        % (model_name, self.data_class))
         # remove result file if exist
         if os.path.isfile(self._result_path):
             os.remove(self._result_path)
@@ -61,7 +70,7 @@ class BeamSearch(object):
                 os.mkdir(p)
 
         self.vocab = Vocab(config.vocab_path, config.vocab_size)
-        self.batcher = Batcher(config.decode_data_path, self.vocab, mode='decode',
+        self.batcher = Batcher(data_path, self.vocab, mode='decode',
                                batch_size=config.beam_size, single_pass=True)
         time.sleep(5)
 
@@ -197,7 +206,8 @@ class BeamSearch(object):
             # write_for_rouge(original_abstracts, decoded_words, counter,
             #                 self._rouge_ref_dir, self._rouge_dec_dir)
 
-            write_for_result(original_articles, original_abstracts, decoded_words, self._result_path)
+            write_for_result(original_articles, original_abstracts, decoded_words, \
+                                                self._result_path, self.data_class)
 
             counter += 1
             if counter % 1000 == 0:
@@ -206,7 +216,6 @@ class BeamSearch(object):
 
             batch = self.batcher.next_batch()
         
-        # print('Average BLEU score:', np.mean(bleu_scores))
         '''
         # uncomment this if you successfully install `pyrouge`
         print("Decoder has finished reading dataset for single_pass.")
@@ -215,11 +224,22 @@ class BeamSearch(object):
         rouge_log(results_dict, self._decode_dir)
         '''
 
-        # with open(self._result_path, "a") as f:
-        #     print('Average BLEU score:', np.mean(bleu_scores), file=f)
+        if self.data_class == 'val':
+            print('Average BLEU score:', np.mean(bleu_scores))
+            with open(self._result_path, "a") as f:
+                print('Average BLEU score:', np.mean(bleu_scores), file=f)
 
 
 if __name__ == '__main__':
-	model_filename = sys.argv[1]
-	beam_Search_processor = BeamSearch(model_filename)
-	beam_Search_processor.decode()
+    model_filename = sys.argv[1]
+    beam_Search_processor_val = BeamSearch(model_filename, config.eval_data_path)
+    print('Decoding validation set...')
+    beam_Search_processor_val.decode()
+    print('Done!\n')
+
+
+    beam_Search_processor_test = BeamSearch(model_filename, config.decode_data_path,
+                                                                data_class='test')
+    print('Decoding test set...')
+    beam_Search_processor_test.decode()
+    print('Done!\n')
