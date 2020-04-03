@@ -74,7 +74,8 @@ class Evaluator(object):
         logits = np.array(logits)
         logits = logits.reshape(-1)
 
-        rwd = float(softmax(logits)[CATEGORIE_ID['entailment']])
+        rwd = float(softmax(logits)[CATEGORIE_ID['entailment']]) + \
+                0.5 * float(softmax(logits)[CATEGORIE_ID['neutral']])
 
         # if decode_sent is '', rwd become 'nan'
         # so if rwd is 'nan', just return 0

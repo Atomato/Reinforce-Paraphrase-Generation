@@ -12,7 +12,7 @@ decode_data_path = os.path.join(root_dir, "data/kor/chunked/test_*")
 vocab_path = os.path.join(root_dir, "data/kor/vocab")
 emb_v_path = os.path.join(root_dir, "data/kor/word_emb.txt")
 emb_list_path = os.path.join(root_dir, "data/kor/word_list.txt")
-log_root = os.path.join(root_dir, "log/evaluator")
+log_root = os.path.join(root_dir, "log/evaluator_neutral")
 
 # Hyperparameters
 mode = "RL"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*

@@ -3,7 +3,7 @@ import numpy as np
 
 UNKNOWN = '<UNK>'
 PADDING = '<PAD>'
-CATEGORIE_ID = {'contradiction' : 0, 'entailment' : 1}
+CATEGORIE_ID = {'entailment' : 0, 'neutral' : 1, 'contradiction' : 2}
 
 # init embeddings randomly
 def init_embeddings(vocab, embedding_dims):
