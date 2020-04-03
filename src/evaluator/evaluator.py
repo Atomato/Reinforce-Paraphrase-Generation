@@ -74,7 +74,14 @@ class Evaluator(object):
         logits = np.array(logits)
         logits = logits.reshape(-1)
 
-        return float(softmax(logits)[CATEGORIE_ID['entailment']])
+        rwd = float(softmax(logits)[CATEGORIE_ID['entailment']])
+
+        # if decode_sent is '', rwd become 'nan'
+        # so if rwd is 'nan', just return 0
+        if rwd != rwd:
+            rwd = 0.
+
+        return rwd
 
     def close(self):
         self.sess.close()

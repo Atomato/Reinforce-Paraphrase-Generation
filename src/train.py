@@ -134,7 +134,7 @@ class Train(object):
                 sampled_batch = torch.stack(config.sample_size*[target], 1) # B x S
             else: # randomly sample a word with given probabilities
                 sampled_batch = torch.multinomial(final_dist, config.sample_size, replacement=True) # B x S
-            
+
             # Compute the NLL
             probs = torch.gather(final_dist, 1, sampled_batch).squeeze()
             step_nll = -torch.log(probs + config.eps)
