@@ -45,3 +45,20 @@ python decode.py ../log/{MODE NAME}/best_model/model_best_XXXXX
 	- The average BLEU score will show up automatically in the terminal after finishing decoding.
 	
 	- If you want to get the ROUGE scores, you should first intall `pyrouge`, here is the [guidance](https://ireneli.eu/2018/01/11/working-with-rouge-1-5-5-evaluation-metric-in-python/). Then, you can uncomment the code snippet specified in `utils.py` and `decode.py`. Finally, run `decode.py` to get the ROUGE scores.
+
+### post-processing
+
+ - Usage
+
+First, set `input_result_path` and `output_result_path` in `post_process.py`
+
+Then run :
+
+```
+python post_process.py
+```
+
+ - Functionality
+
+   - Replace strange words based on dictionary.
+   - Tag [주의] to predictions that possibly need human correction.
