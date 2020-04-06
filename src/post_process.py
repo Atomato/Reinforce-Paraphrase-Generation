@@ -1,7 +1,11 @@
-# post_process.py
 import os
 import datetime
-# from hanspell import spell_checker
+from gluonnlp.data import SentencepieceTokenizer
+from kobert.utils import get_tokenizer
+
+# custom modules
+import config
+
 
 class PostProcess():
 	def __init__(self, input_path, output_path):
@@ -10,38 +14,68 @@ class PostProcess():
 		self.file = open(input_path,'rt',encoding='utf8')
 		self.output_path = output_path
 
+		# tokenizer
+		tok_path = get_tokenizer()
+		self.tokenizer = SentencepieceTokenizer(tok_path)
+
 		# rule set
 		with open('post_process_rules.txt','rt',encoding='utf8') as f:
-			self.rules = dict(map(lambda x:tuple(x.strip().split('\t')),f))
+			self.rules = dict(map(lambda x:tuple(x.strip('\n').split('\t')),f))
+
+		#dict to store (x,y,y_pred) triplet
+		self.idx_map = ['x','y','y_pred']
+		self.inst_dict = {}
 
 
+	def map_dict_by_idx(self, idx, txt):
+		idx = idx % 4
+		if idx == 3: return
+		self.inst_dict[self.idx_map[idx]] = txt.replace(self.idx_map[idx]+':','').strip()
+
+
+	def process_by_idx(self, idx, txt):
+		if idx % 4 == 2: # y_pred lines
+			txt = self.rep_wrong_char(txt)
+			txt = self.tag_strange_txt(txt)
+		return txt
+	
 	def rep_wrong_char(self,txt):
 		for k,v in self.rules.items():
 			if k in txt: txt = txt.replace(k,v)
 		return txt
-
-	# def spell_correct(self,txt):
-		# return spell_checker.check(txt)['checked']
 		
 	def tag_strange_txt(self, txt):
-		conditions = [':' in txt.replace('y_pred:',''), ]
+		conditions = [':' in txt.replace('y_pred:',''), # contains : inside decoded texts 
+					len(self.tokenizer(self.inst_dict['x']))> config.max_dec_steps, # input sequence length exceeds max length in decoder step
+					]
 		if sum(map(lambda x:int(x), conditions)) != 0:
 			txt += ' [주의]'
 		return txt
 
 	def post_process(self):
-		txt_list = []
-		for line in self.file:
-			new_line = line.strip()
-			if line.startswith('y_pred'): 
-				new_line = self.rep_wrong_char(new_line)
-				new_line = self.tag_strange_txt(new_line) 
-			txt_list.append(new_line)
-		return '\n'.join(txt_list)
+		inst_list = []
+		for idx,line in enumerate(self.file):
+			line = line.strip()
+			line = self.process_by_idx(idx,line)
+			self.map_dict_by_idx(idx,line)
+			if idx % 4 == 3: # if reading an instance ends
+				inst_list.append(self.inst_dict)
+				self.inst_dict = {} # flush instance dict
+
+		inst_list.append(self.inst_dict)
+		return inst_list
 
 	def run(self):
+		# write texts
+		inst_list = self.post_process()
+		txt = ''
+		for _dict in inst_list[:-1]:
+			for k,v in _dict.items(): txt += '{}: {}\n'.format(k,v)
+			txt += '\n'
+		txt += inst_list[-1]['x']
+
 		with open(self.output_path,'wt',encoding='utf8') as f:
-			f.write(self.post_process())
+			f.write(txt)
 		self.file.close()
 
 
