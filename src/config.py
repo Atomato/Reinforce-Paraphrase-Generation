@@ -6,13 +6,16 @@ root_dir = os.path.join(os.getcwd(),'..')
 print_interval = 100
 save_model_iter = 100
 
-train_data_path = os.path.join(root_dir, "data/chunked/train_*")
-eval_data_path = os.path.join(root_dir, "data/chunked/val_*")
-decode_data_path = os.path.join(root_dir, "data/chunked/test_*")
-vocab_path = os.path.join(root_dir, "data/vocab")
-emb_v_path = os.path.join(root_dir, "data/word_emb.txt")
-emb_list_path = os.path.join(root_dir, "data/word_list.txt")
-post_process_rule_path = os.path.join(root_dir, "data/post_process_rules.txt")
+data_path = os.path.join(root_dir, "data/kor")
+
+train_data_path = os.path.join(data_path, "chunked/train_*")
+eval_data_path = os.path.join(data_path, "chunked/val_*")
+decode_data_path = os.path.join(data_path, "chunked/test_*")
+vocab_path = os.path.join(data_path, "vocab")
+emb_v_path = os.path.join(data_path, "word_emb.txt")
+emb_list_path = os.path.join(data_path, "word_list.txt")
+post_process_rule_path = os.path.join(data_path, "post_process_rules.txt")
+
 log_root = os.path.join(root_dir, "log/MLE")
 
 # Hyperparameters
