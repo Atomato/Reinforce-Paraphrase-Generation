@@ -17,6 +17,7 @@ from model import Model
 from utils import write_for_rouge, rouge_eval, rouge_log, write_for_result
 from train_util import get_input_from_batch
 
+from post_process import PostProcess
 
 use_cuda = config.use_gpu and torch.cuda.is_available()
 
@@ -229,6 +230,13 @@ class BeamSearch(object):
             with open(self._result_path, "a") as f:
                 print('Average BLEU score:', np.mean(bleu_scores), file=f)
 
+    def get_processed_path(self):
+        # ../log/{MODE NAME}/decode_model_best_XXXXX/result_model_best_2800_{data_class}.txt
+        input_path = self._result_path
+        temp = os.path.splitext(input_path)
+        # ../log/{MODE NAME}/decode_model_best_XXXXX/result_model_best_2800_{data_class}_processed.txt
+        output_path = temp[0] + "_processed" + temp[1]
+        return input_path, output_path
 
 if __name__ == '__main__':
     model_filename = sys.argv[1]
@@ -242,4 +250,14 @@ if __name__ == '__main__':
                                                                 data_class='test')
     print('Decoding test set...')
     beam_Search_processor_test.decode()
+    print('Done!\n')
+
+    print('Post-processing...')
+    input_val, output_val = beam_Search_processor_val.get_processed_path()
+    proc_val = PostProcess(input_path=input_val, output_path=output_val)
+    proc_val.run()
+
+    input_test, output_test = beam_Search_processor_test.get_processed_path()
+    proc_test = PostProcess(input_path=input_test, output_path=output_test)
+    proc_test.run()
     print('Done!\n')

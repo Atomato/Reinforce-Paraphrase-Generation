@@ -1,6 +1,7 @@
 # post_process.py
 import os
 import datetime
+import config
 # from hanspell import spell_checker
 
 class PostProcess():
@@ -11,7 +12,7 @@ class PostProcess():
 		self.output_path = output_path
 
 		# rule set
-		with open('post_process_rules.txt','rt',encoding='utf8') as f:
+		with open(config.post_process_rule_path,'rt',encoding='utf8') as f:
 			self.rules = dict(map(lambda x:tuple(x.strip().split('\t')),f))
 
 
@@ -25,7 +26,7 @@ class PostProcess():
 		
 	def tag_strange_txt(self, txt):
 		conditions = [':' in txt.replace('y_pred:',''), ]
-		if sum(map(lambda x:int(x), conditions)) != 0:
+		if any(conditions):
 			txt += ' [주의]'
 		return txt
 
