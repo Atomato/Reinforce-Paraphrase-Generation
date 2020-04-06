@@ -6,7 +6,6 @@ from kobert.utils import get_tokenizer
 # custom modules
 import config
 
-
 class PostProcess():
 	def __init__(self, input_path, output_path):
 		# load file to process
@@ -19,7 +18,7 @@ class PostProcess():
 		self.tokenizer = SentencepieceTokenizer(tok_path)
 
 		# rule set
-		with open('post_process_rules.txt','rt',encoding='utf8') as f:
+		with open(config.post_process_rule_path,'rt',encoding='utf8') as f:
 			self.rules = dict(map(lambda x:tuple(x.strip('\n').split('\t')),f))
 
 		#dict to store (x,y,y_pred) triplet
@@ -48,7 +47,7 @@ class PostProcess():
 		conditions = [':' in txt.replace('y_pred:',''), # contains : inside decoded texts 
 					len(self.tokenizer(self.inst_dict['x']))> config.max_dec_steps, # input sequence length exceeds max length in decoder step
 					]
-		if sum(map(lambda x:int(x), conditions)) != 0:
+		if any(conditions):
 			txt += ' [주의]'
 		return txt
 
