@@ -79,3 +79,7 @@ python post_process.py
 
    - Replace strange words based on dictionary.
    - Tag [주의] to predictions that possibly need human correction.
+
+ - Another Usage
+
+   - You can get post-processed result file by running `docode.py`
