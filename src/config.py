@@ -6,7 +6,7 @@ root_dir = os.path.join(os.getcwd(),'..')
 print_interval = 100
 save_model_iter = 100
 
-data_path = os.path.join(root_dir, "data/kor")
+data_path = os.path.join(root_dir, "data/kor_double")
 
 train_data_path = os.path.join(data_path, "chunked/train_*")
 eval_data_path = os.path.join(data_path, "chunked/val_*")
@@ -16,7 +16,7 @@ emb_v_path = os.path.join(data_path, "word_emb.txt")
 emb_list_path = os.path.join(data_path, "word_list.txt")
 post_process_rule_path = os.path.join(data_path, "post_process_rules.txt")
 
-log_root = os.path.join(root_dir, "log/MLE")
+log_root = os.path.join(root_dir, "log/MLE_DOUBLE")
 
 # Hyperparameters
 mode = "MLE"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*
