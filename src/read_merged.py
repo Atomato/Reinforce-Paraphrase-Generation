@@ -10,7 +10,6 @@ from konlpy.utils import pprint
 import sys
 from sentence_decode import BeamSearch
 import copy
-import kss
 import pickle as pkl
 
 def isnan(data):
@@ -74,7 +73,7 @@ def df_to_list(dataframe, columns):
         resultList.append(word_list)
     return resultList
 
-def split_sentences(sentence):
+def split_sentences(sentence,USE_KSS=False):
     #sentence= ['매우 긴 문장 여러개 묶음']
     sentenceList_tmp = []
     sentenceList = []
@@ -83,11 +82,15 @@ def split_sentences(sentence):
     sentence = sentence[0]
     sentence = sentence.replace('\ne', '\\KE')
     sentenceList_tmp += sentence.split('\n')
-    for sentence in sentenceList_tmp:
-        sentenceList+=kss.split_sentences(sentence.strip().replace('\\KE', '\ne'))
+    if(USE_KSS):
+        for sentence in sentenceList_tmp:
+            sentenceList+=kss.split_sentences(sentence.strip().replace('\\KE', '\ne'))
+    else:
+        sentenceList = sentenceList_tmp
+        print(sentenceList)
     for i in range(len(sentenceList)):
         tmp  = equation_replacement(sentenceList[i])
-        if tmp!='' and tmp!=' ' and tmp!='  ':
+        if tmp[0]!='' and tmp[0]!=' ' and tmp[0]!='  ':
             sentenceList_fin.append(tmp[0])
             equationList.append(tmp[1])
     return sentenceList_fin, equationList
@@ -230,15 +233,16 @@ def recover_equation(sentence, equationList):
             sentence = sentence.replace(token, eq)
     return sentence
 
-def decode_merge_file(model_filename = '../log/MLE/best_model/model_best_2800', data_filename = '../data/kor/excel/중1_문자와식_개념완성_Merge-1_pipeline제작2.xlsx'):
+def decode_merge_file(model_filename = '../log/MLE/best_model/model_best_2800', data_filename = '../data/kor/excel/중1_문자와식_개념완성_Merge-1_pipeline제작2.xlsx', USE_KSS=False):
 
     df = pd.read_excel(data_filename, sheet_name = "Merge")
     cols = ['하위개념어', '정의M', '과정M', '성질M', '예', '참고M', 'Page']
     data_list = df_to_list(df, cols)
-
+    if USE_KSS:
+        import kss
     for i in range(len(data_list)):
         for j in range(len(data_list[i]) - 1):
-            sentenceList, equationList = split_sentences(data_list[i][j + 1][0])
+            sentenceList, equationList = split_sentences(data_list[i][j + 1][0], USE_KSS)
             data_list[i][j + 1].append(data_list[i][j + 1][1])
             data_list[i][j + 1][0] = sentenceList
             data_list[i][j + 1][1] = equationList
@@ -261,20 +265,21 @@ if __name__ == '__main__':
     try:
         model_filenmae = sys.argv[1]
     except:
-        model_filename = '../log/MLE/best_model/model_best_2800'
+        model_filename = '../log/MLE/best_model/model_best_2000'
 
     try:
         data_filename = sys.argv[2]
     except:
         data_filename = '../data/kor/excel/중1_문자와식_개념완성_Merge-1_pipeline제작2.xlsx'
-
+    USE_KSS = False
     df = pd.read_excel(data_filename, sheet_name = "Merge")
     cols = ['하위개념어', '정의M', '과정M', '성질M', '예', '참고M', 'Page']
     data_list = df_to_list(df, cols)
-
+    if USE_KSS:
+        import kss
     for i in range(len(data_list)):
         for j in range(len(data_list[i]) - 1):
-            sentenceList, equationList = split_sentences(data_list[i][j + 1][0])
+            sentenceList, equationList = split_sentences(data_list[i][j + 1][0], USE_KSS)
             data_list[i][j + 1].append(data_list[i][j + 1][1])
             data_list[i][j + 1][0] = sentenceList
             data_list[i][j + 1][1] = equationList
