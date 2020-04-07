@@ -10,7 +10,10 @@ from konlpy.utils import pprint
 import sys
 from sentence_decode import BeamSearch
 import copy
+import post_process
 import pickle as pkl
+import datetime
+import time
 
 def isnan(data):
     if type(data)==type(0.0):
@@ -233,32 +236,74 @@ def recover_equation(sentence, equationList):
             sentence = sentence.replace(token, eq)
     return sentence
 
+def read_post_processed():
+    time.sleep(1)
+    root_dir = os.getcwd()
+    input_path = os.path.join(root_dir, 'sentenceList.txt')
+    now = datetime.datetime.now()
+    output_path = 'processed_{:02d}{:02d}{:02d}{:02d}.txt'.format(now.month, now.day, now.hour,
+                                                                                   now.minute)
+    processed_sL = []
+    proc = post_process.PostProcess(input_path=input_path, output_path=output_path)
+    proc.run()
+    time.sleep(1)
+
+    with open(output_path, 'r') as processed_file:
+        lines = processed_file.readlines()
+        for line in lines:
+            if "y_pred" in line:
+                line = line.replace("y_pred:", "").strip()
+                processed_sL.append(line)
+    return processed_sL
+
+
 def decode_merge_file(model_filename = '../log/MLE/best_model/model_best_2800', data_filename = '../data/kor/excel/중1_문자와식_개념완성_Merge-1_pipeline제작2.xlsx', USE_KSS=False):
 
     df = pd.read_excel(data_filename, sheet_name = "Merge")
     cols = ['하위개념어', '정의M', '과정M', '성질M', '예', '참고M', 'Page']
     data_list = df_to_list(df, cols)
-    if USE_KSS:
-        import kss
-    for i in range(len(data_list)):
-        for j in range(len(data_list[i]) - 1):
-            sentenceList, equationList = split_sentences(data_list[i][j + 1][0], USE_KSS)
-            data_list[i][j + 1].append(data_list[i][j + 1][1])
-            data_list[i][j + 1][0] = sentenceList
-            data_list[i][j + 1][1] = equationList
-        if (data_list[i][1][2][0] == '정의M'):
-            data_list[i][1][0][0] = data_list[i][0] + ': ' + data_list[i][1][0][0]
+    with open("sentenceList.txt", 'w') as f:
+        if USE_KSS:
+            import kss
+        for i in range(len(data_list)):
+            for j in range(len(data_list[i]) - 1):
+                sentenceList, equationList = split_sentences(data_list[i][j + 1][0], USE_KSS)
+                data_list[i][j + 1].append(data_list[i][j + 1][1])
+                data_list[i][j + 1][0] = sentenceList
+                data_list[i][j + 1][1] = equationList
+            if (data_list[i][1][2][0] == '정의M'):
+                data_list[i][1][0][0] = data_list[i][0] + ': ' + data_list[i][1][0][0]
 
-    sL, iL = data_list_paraphrase(model_filename, data_list)
+        sL, iL = data_list_paraphrase(model_filename, data_list)
 
-    transformedSentence = copy.deepcopy(data_list)
-    recoveredSentence = copy.deepcopy(transformedSentence)
-    x = 0
+        transformedSentence = copy.deepcopy(data_list)
+        recoveredSentence = copy.deepcopy(transformedSentence)
+        processedSentence = copy.deepcopy(recoveredSentence)
+        x = 0
+        for i, j, k in iL:
+            transformedSentence[i][j + 1][0][k] = sL[x]
+            recoveredSentence[i][j + 1][0][k] = recover_equation(sL[x],transformedSentence[i][j + 1][1][k])
+            f.write("x:")
+            f.write(recoveredSentence[i][j + 1][0][k])
+            f.write("\n")
+            f.write("y:")
+            f.write(recoveredSentence[i][j + 1][0][k])
+            f.write("\n")
+            f.write("y_pred:")
+            f.write(recoveredSentence[i][j + 1][0][k])
+            f.write("\n")
+            f.write("\n")
+            x += 1
+        f.write("Average")
+    time.sleep(1)
+
+    processed_sL = read_post_processed()
+
+    x=0
     for i, j, k in iL:
-        transformedSentence[i][j + 1][0][k] = sL[x]
-        recoveredSentence[i][j + 1][0][k] = recover_equation(sL[x],transformedSentence[i][j + 1][1][k])
+        processedSentence[i][j + 1][0][k] = processed_sL[x]
         x += 1
-    return recoveredSentence
+    return [processedSentence, transformedSentence, recoveredSentence]
 
 
 if __name__ == '__main__':
@@ -271,31 +316,9 @@ if __name__ == '__main__':
         data_filename = sys.argv[2]
     except:
         data_filename = '../data/kor/excel/중1_문자와식_개념완성_Merge-1_pipeline제작2.xlsx'
-    USE_KSS = False
-    df = pd.read_excel(data_filename, sheet_name = "Merge")
-    cols = ['하위개념어', '정의M', '과정M', '성질M', '예', '참고M', 'Page']
-    data_list = df_to_list(df, cols)
-    if USE_KSS:
-        import kss
-    for i in range(len(data_list)):
-        for j in range(len(data_list[i]) - 1):
-            sentenceList, equationList = split_sentences(data_list[i][j + 1][0], USE_KSS)
-            data_list[i][j + 1].append(data_list[i][j + 1][1])
-            data_list[i][j + 1][0] = sentenceList
-            data_list[i][j + 1][1] = equationList
-        if (data_list[i][1][2][0] == '정의M'):
-            data_list[i][1][0][0] = data_list[i][0] + ': ' + data_list[i][1][0][0]
 
-    sL, iL = data_list_paraphrase(model_filename, data_list)
-
-    transformedSentence = copy.deepcopy(data_list)
-    recoveredSentence = copy.deepcopy(transformedSentence)
-    x = 0
-    for i, j, k in iL:
-        transformedSentence[i][j + 1][0][k] = sL[x]
-        recoveredSentence[i][j + 1][0][k] = recover_equation(sL[x],transformedSentence[i][j + 1][1][k])
-        x += 1
-    print(recoveredSentence)
+    processedSentence, transformedSentence, recoveredSentence = decode_merge_file(model_filename = '../log/MLE/best_model/model_best_2000', data_filename = '../data/kor/excel/중1_문자와식_개념완성_Merge-1_pipeline제작2.xlsx', USE_KSS=False)
+    print(processedSentence)
     with open('../log/MLE/eq_recovered_list.pkl', 'wb') as f:
-        pkl.dump(recoveredSentence, f)
+        pkl.dump(processedSentence, f)
 
