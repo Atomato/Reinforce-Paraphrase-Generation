@@ -1,7 +1,8 @@
 import os
+import random
 import datetime
-from gluonnlp.data import SentencepieceTokenizer
 from kobert.utils import get_tokenizer
+from gluonnlp.data import SentencepieceTokenizer
 
 # custom modules
 import config
@@ -25,6 +26,14 @@ class PostProcess():
 		self.idx_map = ['x','y','y_pred']
 		self.inst_dict = {}
 
+		# numbers / hipen
+		self.num_2_txt = {'(1)': ['우선,','먼저,','처음으로,'],
+						  '(2)':['이어서,','다음으로,',''],
+						  '(3)':['이어서,','다음으로,',''],
+						  '(4)':['이어서,','다음으로,',''],
+						  '(5)':['이어서,','다음으로,',''],
+						  '-' : ['']}
+
 
 	def map_dict_by_idx(self, idx, txt):
 		idx = idx % 4
@@ -34,6 +43,7 @@ class PostProcess():
 
 	def process_by_idx(self, idx, txt):
 		if idx % 4 == 2: # y_pred lines
+			txt = correct_numbering(txt)
 			txt = self.rep_wrong_char(txt)
 			txt = self.tag_strange_txt(txt)
 		return txt
@@ -49,6 +59,11 @@ class PostProcess():
 					]
 		if any(conditions):
 			txt += ' [주의]'
+		return txt
+
+	def correct_numbering(self, txt):
+		for k,v in self.num_2_txt.items():
+			if k in txt: txt = txt.replace(k,random.choice(v))
 		return txt
 
 	def post_process(self):
