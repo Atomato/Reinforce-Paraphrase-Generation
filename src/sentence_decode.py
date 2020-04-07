@@ -267,7 +267,6 @@ class Batcher(object):
 
 
   def fill_example_queue(self):
-    print("fill_example")
     input_gen = self.text_generator(self._sentence)
     while True:
       try:
@@ -361,7 +360,7 @@ class Beam(object):
 
 
 class BeamSearch(object):
-    def __init__(self, model_file_path, sentence, data_class='test'):
+    def __init__(self, model_file_path, data_class='test'):
         self.data_class = data_class
         if self.data_class not in ['val', 'test']:
             print("data_class must be 'val' or 'test'.")
@@ -385,8 +384,7 @@ class BeamSearch(object):
                 os.mkdir(p)
 
         self.vocab = Vocab(config.vocab_path, config.vocab_size)
-        self.batcher = Batcher(sentence, self.vocab, mode='decode',
-                               batch_size=config.beam_size, single_pass=True)
+
         time.sleep(5)
 
         self.model = Model(model_file_path, is_eval=True)
@@ -490,7 +488,11 @@ class BeamSearch(object):
         beams_sorted = self.sort_beams(results)
         return beams_sorted[0]
 
-    def decode(self):
+    def decode(self, sentence):
+        sentence = kobert_tokenizer(sentence)
+        self.batcher = Batcher(sentence, self.vocab, mode='decode',
+                               batch_size=config.beam_size, single_pass=True)
+        time.sleep(0.2)
         start = time.time()
         counter = 0
         batch = self.batcher.next_batch()
@@ -503,14 +505,14 @@ class BeamSearch(object):
             output_ids = [int(t) for t in best_summary.tokens[1:]]
             decoded_words = data.outputids2words(output_ids, self.vocab,
                                                  (batch.art_oovs[0] if config.pointer_gen else None))
-            print("".join(decoded_words).replace("▁", " ").strip())
+
             # Remove the [STOP] token from decoded_words, if necessary
             try:
                 fst_stop_idx = decoded_words.index(data.STOP_DECODING)
                 decoded_words = decoded_words[:fst_stop_idx]
             except ValueError:
                 decoded_words = decoded_words
-
+            print()
             original_articles = batch.original_articles[0]
 
             original_abstracts = batch.original_abstracts_sents[0]
@@ -527,37 +529,25 @@ class BeamSearch(object):
 
             batch = self.batcher.next_batch()
 
-        '''
-        # uncomment this if you successfully install `pyrouge`
-        print("Decoder has finished reading dataset for single_pass.")
-        print("Now starting ROUGE eval...")
-        results_dict = rouge_eval(self._rouge_ref_dir, self._rouge_dec_dir)
-        rouge_log(results_dict, self._decode_dir)
-        '''
-
-        if self.data_class == 'val':
-            print('Average BLEU score:', np.mean(bleu_scores))
-            with open(self._result_path, "a") as f:
-                print('Average BLEU score:', np.mean(bleu_scores), file=f)
+            '''
+            # uncomment this if you successfully install `pyrouge`
+            print("Decoder has finished reading dataset for single_pass.")
+            print("Now starting ROUGE eval...")
+            results_dict = rouge_eval(self._rouge_ref_dir, self._rouge_dec_dir)
+            rouge_log(results_dict, self._decode_dir)
+            '''
+            return "".join(decoded_words).replace("▁", " ").strip()
 
 
-"""if __name__ == '__main__':
-    sentence = kobert_tokenizer("(수식)를 계산하여 보자.")
-    model_filename = "../log/MLE/best_model/model_best_2000"
-    beam_Search_processor = BeamSearch(model_filename, sentence)
-    beam_Search_processor.decode()
-    print('Done!\n')"""
 if __name__ == '__main__':
-    #model_filename = sys.argv[1]
-    model_filename = '../log/MLE/best_model/model_best_2000'
+    try:
+        model_filename = sys.argv[1]
+    except:
+        model_filename = '../log/MLE/best_model/model_best_2000'
 
-    """ beam_Search_processor_val = BeamSearch(model_filename, config.eval_data_path)
-    print('Decoding validation set...')
-    beam_Search_processor_val.decode()
-    print('Done!\n')"""
 
-    sentence = kobert_tokenizer("(수식)를 계산하여 보자.")
-    beam_Search_processor_test = BeamSearch(model_filename, sentence, data_class='test')
-    print('Decoding test set...')
-    beam_Search_processor_test.decode()
+    sentence = '어떤 수를 (미지수)로 놓고 조건에 맞게 방정식을 세워서 푼다.'
+    beam_Search_processor_test = BeamSearch(model_filename, data_class='test')
+    sent = beam_Search_processor_test.decode(sentence)
+    print(sent)
     print('Done!\n')
