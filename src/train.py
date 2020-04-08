@@ -75,9 +75,9 @@ class Train(object):
         return train_model_path
     
 
-    def setup_train(self, model_file_path=None, emb_v_path=None, emb_list_path = None, vocab = None):
+    def setup_train(self, model_file_path=None, emb_v_path=None, emb_list_path = None, vocab = None, log=None):
         self.model = Model(model_file_path)
-        set_embedding(self.model, emb_v_path = emb_v_path, emb_list_path = emb_list_path, vocab = self.vocab)
+        set_embedding(self.model, emb_v_path = emb_v_path, emb_list_path = emb_list_path, vocab = self.vocab, log = log)
         params = list(self.model.encoder.parameters()) + list(self.model.decoder.parameters()) + \
                  list(self.model.reduce_state.parameters())
         initial_lr = config.lr_coverage if config.is_coverage else config.lr
@@ -163,18 +163,21 @@ class Train(object):
 
 
     def trainIters(self, n_iters, model_file_path=None):
-        iter, running_avg_loss = self.setup_train(model_file_path, emb_v_path=config.emb_v_path, emb_list_path=config.emb_list_path, vocab=self.vocab)
-        min_val_loss = np.inf
-
         # log file path
         log_path = os.path.join(config.log_root, 'log')
         log = open(log_path, 'w')
+        print_log("==============================", file=log)
+        iter, running_avg_loss = self.setup_train(model_file_path, emb_v_path=config.emb_v_path, emb_list_path=config.emb_list_path, vocab=self.vocab, log=log)
+        min_val_loss = np.inf
         
         alpha = config.alpha
         beta = config.beta
         k1 = config.k1
         k2 = config.k2
         delay = 0
+
+        print_log("Train mode is %s" % config.mode, file=log)
+        print_log("==============================", file=log)
         while iter < n_iters:
             if config.mode == 'RL':
                 alpha = 0.
