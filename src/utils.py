@@ -4,7 +4,11 @@ import os
 # import pyrouge
 import logging
 
-SPECIAL_TOKENS = ['<expr>', '<unvar>', '<equl>', '<arrw>']
+SPECIAL_2_SPECIAL = {'<expr>': '[EXPR]',
+                     '<unvar>': '[UNVAR]' ,
+                     '<arrw>': '[ARRW]',
+                     '<equl>': '[EQUL]',
+                     '<ineq>': '[INEQ]'}
 
 def print_results(article, abstract, decoded_output):
   print ("")
@@ -87,6 +91,8 @@ def write_for_rouge(reference_sents, decoded_words, ex_index,
       f.write(sent) if idx == len(decoded_sents) - 1 else f.write(sent + "\n")
 
 def reverse_tokenizer(sentence):
+  for k, v in SPECIAL_2_SPECIAL.items():
+    sentence = sentence.replace(k, v)
   sents = sentence.split()
 
   return "".join(sents).replace("▁", " ").strip()
