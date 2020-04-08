@@ -29,8 +29,8 @@ emb_dim= 128
 batch_size= 8
 sample_size= 4
 
-max_enc_steps= 50 # 20
-max_dec_steps= 50 # 20
+max_enc_steps= 100 # 20
+max_dec_steps= 100 # 20
 
 beam_size= 8
 min_dec_steps= 5
