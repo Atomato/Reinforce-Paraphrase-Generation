@@ -43,7 +43,7 @@ class PostProcess():
 
 	def process_by_idx(self, idx, txt):
 		if idx % 4 == 2: # y_pred lines
-			txt = correct_numbering(txt)
+			txt = self.correct_numbering(txt)
 			txt = self.rep_wrong_char(txt)
 			txt = self.tag_strange_txt(txt)
 		return txt
