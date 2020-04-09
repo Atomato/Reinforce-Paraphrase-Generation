@@ -65,13 +65,24 @@ sp = SentencepieceTokenizer(TOK_PATH)
 """import random
 random.seed(1234)"""
 def kobert_tokenizer(sentence):
-    for k,v in KOREAN_2_SPECIAL.items(): # replace special tokens
-        sentence = sentence.replace(k,v)
-    tokens = [token for token in sp(sentence)]
-    tokens = [SPECIAL_2_ENG[ele] if ele in SPECIAL_2_ENG else ele for ele in tokens]
-    # tokens = [token for token in tokens if token != "▁"]
+    if type(sentence)==type(""):
+        for k,v in KOREAN_2_SPECIAL.items(): # replace special tokens
+            sentence = sentence.replace(k,v)
+        tokens = [token for token in sp(sentence)]
+        tokens = [SPECIAL_2_ENG[ele] if ele in SPECIAL_2_ENG else ele for ele in tokens]
+        # tokens = [token for token in tokens if token != "▁"]
 
-    return ' '.join(tokens)
+        return ' '.join(tokens)
+    elif type(sentence)==type([]):
+        for i in range(len(sentence)):
+            for k, v in KOREAN_2_SPECIAL.items():  # replace special tokens
+                sentence[i] = sentence[i].replace(k, v)
+            tokens = [token for token in sp(sentence[i])]
+            tokens = [SPECIAL_2_ENG[ele] if ele in SPECIAL_2_ENG else ele for ele in tokens]
+            # tokens = [token for token in tokens if token != "▁"]
+
+            sentence[i] = ' '.join(tokens)
+        return sentence
 
 
 # Except for the pytorch part content of this file is copied from https://github.com/abisee/pointer-generator/blob/master/
@@ -270,7 +281,7 @@ class Batcher(object):
     input_gen = self.text_generator(self._sentence)
     while True:
       try:
-        (article, abstract) = next(input_gen) # read the next example from file. article and abstract are both strings.
+        (article, abstract) = next(input_gen)# read the next example from file. article and abstract are both strings.
       except StopIteration: # if there are no more examples:
         if self._single_pass:
           self._finished_reading = True
@@ -333,7 +344,15 @@ class Batcher(object):
 
 
   def text_generator(self, sentence):
-     yield (sentence, sentence)
+    if(type(sentence) == type("")):
+        yield (sentence, sentence)
+
+    elif(type(sentence)==type([])):
+        for sent in sentence:
+            yield(sent, sent)
+
+
+
 
 class Beam(object):
     def __init__(self, tokens, log_probs, state, context, coverage):
@@ -496,6 +515,7 @@ class BeamSearch(object):
         start = time.time()
         counter = 0
         batch = self.batcher.next_batch()
+        result_sentences=[]
 
         while batch is not None:
             # Run beam search to get best Hypothesis
@@ -536,7 +556,11 @@ class BeamSearch(object):
             results_dict = rouge_eval(self._rouge_ref_dir, self._rouge_dec_dir)
             rouge_log(results_dict, self._decode_dir)
             '''
-            return "".join(decoded_words).replace("▁", " ").strip()
+            if(type(sentence)==type("")):
+                return "".join(decoded_words).replace("▁", " ").strip()
+            elif(type(sentence)==type([])):
+                result_sentences.append("".join(decoded_words).replace("▁", " ").strip())
+        return result_sentences
 
 
 if __name__ == '__main__':
@@ -546,7 +570,9 @@ if __name__ == '__main__':
         model_filename = '../log/MLE/best_model/model_best_2000'
 
 
-    sentence = '어떤 수를 (미지수)로 놓고 조건에 맞게 방정식을 세워서 푼다.'
+    sentence = ['어떤 수를 (미지수)로 놓고 조건에 맞게 방정식을 세워서 푼다.', '기준이 되는 수를 (미지수)로 놓고 다른 수를 (미지수)로 나타내어 방정식을 푼다.', "'몇 년 후'와 같은 조건이 주어지면 몇 년을 미지수 (미지수)로, 나이의 합이나 차가 주어지면 어느 한 사람의 나이를 미지수 (미지수)로 놓는다."]
+    #sentence = '어떤 수를 (미지수)로 놓고 조건에 맞게 방정식을 세워서 푼다.'
+
     beam_Search_processor_test = BeamSearch(model_filename, data_class='test')
     sent = beam_Search_processor_test.decode(sentence)
     print(sent)
