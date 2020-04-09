@@ -1,32 +1,38 @@
 from evaluator.Model import Decomposable
-from evaluator import Config
 from evaluator.Utils import *
 from keras.preprocessing.sequence import pad_sequences
 from sklearn.preprocessing import OneHotEncoder
 from scipy.special import softmax
 import tensorflow as tf
 
+import yaml
+
 class Evaluator(object):
     def __init__(self):
         # read config
-        config = Config.ModelConfig()
-        arg = config.arg
+        config_dict = self.__readConfig()
 
-        self.vocab_dict = load_vocab(arg.vocab_path)
-        embeddings = load_embeddings(arg.embedding_path, self.vocab_dict)
+        self.vocab_dict = load_vocab(config_dict["vocab_path"])
+        embeddings = load_embeddings(config_dict["embedding_path"], self.vocab_dict)
 
-        arg.n_vocab, arg.embedding_size = embeddings.shape
-        arg.n_classes = len(CATEGORIE_ID)
+        n_vocab, embedding_size = embeddings.shape
+        n_classes = len(CATEGORIE_ID)
 
-        self.model = Decomposable(arg.seq_length, arg.n_vocab, arg.embedding_size, \
-                            arg.hidden_size, arg.attention_size, arg.n_classes, \
-                            arg.batch_size, arg.learning_rate, arg.optimizer, \
-                            arg.l2, arg.clip_value)
+        self.model = Decomposable(config_dict["seq_length"], n_vocab, embedding_size, \
+                            config_dict["hidden_size"], config_dict["attention_size"], n_classes, \
+                            config_dict["batch_size"], config_dict["learning_rate"], config_dict["optimizer"], \
+                            config_dict["l2"], config_dict["clip_value"])
 
-        self.best_path = arg.best_path
+        self.best_path = config_dict["best_path"]
         self.sess = tf.Session()
         saver = tf.train.Saver(max_to_keep=5)
         saver.restore(self.sess, self.best_path)
+
+    # read config information from config file
+    def __readConfig(self):
+        with open('./evaluator/config.yaml') as conf:
+            config_dict = yaml.load(conf)
+        return config_dict
 
     def sentence2Index(self, encode_sent, decode_sent, maxLen = 100):
         """
