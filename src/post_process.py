@@ -84,7 +84,7 @@ class PostProcess():
 		inst_list = self.post_process()
 		txt = ''
 		for _dict in inst_list[:-1]:
-			for k,v in _dict.items(): txt += '{}: {}\n'.format(k,v)
+			for k,v in _dict.items(): txt += '{}:\t{}\n'.format(k,v)
 			txt += '\n'
 		txt += inst_list[-1]['x']
 

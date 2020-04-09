@@ -163,6 +163,9 @@ class Train(object):
 
 
     def trainIters(self, n_iters, model_file_path=None):
+        if config.mode not in ["MLE", "RL", "GTI", "SO", "SIO", "DAGGER", "DAGGER*"]:
+            print("\nTRAINING MODE ERROR\n")
+            raise ValueError
         # log file path
         log_path = os.path.join(config.log_root, 'log')
         log = open(log_path, 'w')
@@ -174,9 +177,11 @@ class Train(object):
         beta = config.beta
         k1 = config.k1
         k2 = config.k2
-        delay = 0
+        delay = iter # set to 0 in the original code (wyu-du)
 
+        print("\nLog root is %s" % config.log_root)
         print_log("Train mode is %s" % config.mode, file=log)
+        print_log("k1: %s, k2: %s" % (config.k1, config.k2), file=log)
         print_log("==============================", file=log)
         while iter < n_iters:
             if config.mode == 'RL':
@@ -211,8 +216,8 @@ class Train(object):
             iter += 1
             
             if iter % config.print_interval == 0:
-                print_log('steps %d, current_loss: %f, avg_reward: %f' % \
-                                (iter, loss, avg_reward), file=log)
+                print_log('steps %d, current_loss: %f, avg_reward: %f, alpha: %f, beta: %f, delay: %d' % \
+                            (iter, loss, avg_reward, alpha, beta, delay), file=log)
             
             if iter % config.save_model_iter == 0:
                 model_file_path = self.save_model(running_avg_loss, iter, mode='train')
