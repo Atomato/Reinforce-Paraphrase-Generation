@@ -18,11 +18,11 @@ log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log/MLE")
 python train.py
 ```
 
-3. Fine-tune: modify the training mode and the path where the fine-tuned model will be saved (mode: "MLE" -> "RL").
+3. Fine-tune: modify the training mode and the path where the fine-tuned model will be saved (mode: "MLE" -> "SIO").
 ```
 vim config.py
-log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log/RL")
-mode = "RL"
+log_root = os.path.join(root_dir, "Reinforce-Paraphrase-Generation/log/SIO")
+mode = "SIO"
 ```
 Fine tune the pointer-generator model with REINFORCE algorithm.
 ```
