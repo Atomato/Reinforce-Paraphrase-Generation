@@ -201,9 +201,6 @@ class BeamSearch(object):
             original_articles = batch.original_articles[0]
             original_abstracts = batch.original_abstracts_sents[0]
             reference = original_abstracts[0].strip().split()
-            print(decoded_words)
-            print(reference)
-            exit()
             bleu = nltk.translate.bleu_score.sentence_bleu([reference], decoded_words, weights = (0.5, 0.5))
             bleu_scores.append(bleu)
 
