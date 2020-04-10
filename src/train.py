@@ -24,7 +24,6 @@ from train_util import *
 from utils import calc_running_avg_loss, print_log
 from eval import Evaluate
 
-
 use_cuda = config.use_gpu and torch.cuda.is_available()
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
@@ -77,7 +76,7 @@ class Train(object):
 
     def setup_train(self, model_file_path=None, emb_v_path=None, emb_list_path = None, vocab = None, log=None):
         self.model = Model(model_file_path)
-        set_embedding(self.model, emb_v_path = emb_v_path, emb_list_path = emb_list_path, vocab = self.vocab, log = log)
+        set_embedding(self.model, emb_v_path = emb_v_path, emb_list_path = emb_list_path, vocab = self.vocab, use_cuda = use_cuda, log = log)
         params = list(self.model.encoder.parameters()) + list(self.model.decoder.parameters()) + \
                  list(self.model.reduce_state.parameters())
         initial_lr = config.lr_coverage if config.is_coverage else config.lr
@@ -183,6 +182,8 @@ class Train(object):
         print_log("Train mode is %s" % config.mode, file=log)
         print_log("k1: %s, k2: %s" % (config.k1, config.k2), file=log)
         print_log("==============================", file=log)
+
+        cur_time = time.time()
         while iter < n_iters:
             if config.mode == 'RL':
                 alpha = 0.
@@ -227,13 +228,14 @@ class Train(object):
                     min_val_loss = val_avg_loss
                     best_model_file_path = self.save_model(running_avg_loss, iter, mode='eval')
                     print_log('Save best model at %s' % best_model_file_path, file=log)
-                print_log('steps %d, train_loss: %f, val_loss: %f' % \
-                                        (iter, loss, val_avg_loss), file=log)
+                print_log('steps %d, train_loss: %f, val_loss: %f, time: %ds' % \
+                                        (iter, loss, val_avg_loss, time.time()-cur_time), file=log)
                 # write val_loss into tensorboard
                 loss_sum = tf.compat.v1.Summary()
                 loss_sum.value.add(tag='val_avg_loss', simple_value=val_avg_loss)
                 self.summary_writer.add_summary(loss_sum, global_step=iter)
                 self.summary_writer.flush()
+                cur_time = time.time()
 
         log.close()
 
