@@ -105,7 +105,7 @@ class PostProcess():
 		inst_list.append('Average BLEU score: {:f}'.format(sum(bleu_list)/len(bleu_list)))
 		return inst_list
 
-	def run(self):
+	def write_processed_file(self):
 		# write texts
 		inst_list = self.post_process()
 		txt = ''
@@ -116,8 +116,15 @@ class PostProcess():
 
 		with open(self.output_path,'wt',encoding='utf8') as f:
 			f.write(txt)
-		if self.is_filetype(self.file):
-			self.file.close()
+		if self.is_filetype(self.file): self.file.close()
+
+	def return_processed_file(self):
+		inst_list = self.post_process()
+		ret = {'x':[],'y':[],'y_pred':[]}
+		for _dict in inst_list[:-1]:
+			for k,v in _dict.items(): ret[k].append('{}'.format(v))
+		if self.is_filetype(self.file): self.file.close()
+		return ret
 
 
 
@@ -126,7 +133,7 @@ def main():
 	input_path = os.path.join(root_dir,'new_hyperparam_result.txt')
 	now = datetime.datetime.now()
 	proc = PostProcess(input_path_or_input_list=input_path, output_path = 'processed_{:02d}{:02d}{:02d}{:02d}.txt'.format(now.month,now.day,now.hour,now.minute))
-	proc.run()
+	proc.write_processed_file()
 
 if __name__ == '__main__':
 	main()
