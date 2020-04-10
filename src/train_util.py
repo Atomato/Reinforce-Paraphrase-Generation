@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import config
 import data
-from utils import rouge_2
+from utils import rouge_2, print_log
 import sys
 
 
@@ -107,7 +107,7 @@ def gen_preds(samples_batch, use_cuda):
                 latest_batch[i,j] = 0 # UNK_TOKEN
     return latest_batch
 
-def set_embedding(model, emb_v_path, emb_list_path, vocab):
+def set_embedding(model, emb_v_path, emb_list_path, vocab, use_cuda, log):
     # Use random initialization if path is None
     if emb_v_path is None or emb_list_path is None or vocab is None : return
          
@@ -126,9 +126,13 @@ def set_embedding(model, emb_v_path, emb_list_path, vocab):
             assign_cnt += 1
         except: 
             pass
-    print('vocab counts : {}'.format(len(vocab_map)))
-    print('assigned vocab counts : {}({:.2f}%)'.format(assign_cnt, assign_cnt*100.0/len(vocab_map)))
+    print_log('vocab counts : {}'.format(len(vocab_map)), file=log)
+    print_log('assigned vocab counts : {}({:.2f}%)'.format(assign_cnt, assign_cnt*100.0/len(vocab_map)), file=log)
 
     # tie encoder/decoder embedding
     model.encoder.embedding.weight = torch.nn.Parameter(torch.from_numpy(temp_emb).float())
     model.decoder.embedding.weight = model.encoder.embedding.weight
+
+    if use_cuda:
+        model.encoder = model.encoder.cuda()
+        model.decoder = model.decoder.cuda()

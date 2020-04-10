@@ -254,10 +254,10 @@ if __name__ == '__main__':
 
     print('Post-processing...')
     input_val, output_val = beam_Search_processor_val.get_processed_path()
-    proc_val = PostProcess(input_path=input_val, output_path=output_val)
-    proc_val.run()
+    proc_val = PostProcess(input_val, output_val)
+    proc_val.write_processed_file()
 
     input_test, output_test = beam_Search_processor_test.get_processed_path()
-    proc_test = PostProcess(input_path=input_test, output_path=output_test)
-    proc_test.run()
+    proc_test = PostProcess(input_test, output_test)
+    proc_test.write_processed_file()
     print('Done!\n')

@@ -22,15 +22,15 @@ log_root = os.path.join(root_dir, "log/MLE")
 mode = "MLE"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*
 alpha = 1.0
 beta = 1.0
-k1 = 0.9999
-k2 = 3000.
+k1 = 0.995 # 0.9999
+k2 = 250. # 3000.
 hidden_dim= 256
 emb_dim= 128
 batch_size= 8
 sample_size= 4
 
-max_enc_steps= 50 # 20
-max_dec_steps= 50 # 20
+max_enc_steps= 100 # 20
+max_dec_steps= 100 # 20
 
 beam_size= 8
 min_dec_steps= 5

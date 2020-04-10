@@ -24,7 +24,6 @@ from train_util import *
 from utils import calc_running_avg_loss, print_log
 from eval import Evaluate
 
-
 use_cuda = config.use_gpu and torch.cuda.is_available()
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
@@ -75,9 +74,9 @@ class Train(object):
         return train_model_path
     
 
-    def setup_train(self, model_file_path=None, emb_v_path=None, emb_list_path = None, vocab = None):
+    def setup_train(self, model_file_path=None, emb_v_path=None, emb_list_path = None, vocab = None, log=None):
         self.model = Model(model_file_path)
-        set_embedding(self.model, emb_v_path = emb_v_path, emb_list_path = emb_list_path, vocab = self.vocab)
+        set_embedding(self.model, emb_v_path = emb_v_path, emb_list_path = emb_list_path, vocab = self.vocab, use_cuda = use_cuda, log = log)
         params = list(self.model.encoder.parameters()) + list(self.model.decoder.parameters()) + \
                  list(self.model.reduce_state.parameters())
         initial_lr = config.lr_coverage if config.is_coverage else config.lr
@@ -163,18 +162,28 @@ class Train(object):
 
 
     def trainIters(self, n_iters, model_file_path=None):
-        iter, running_avg_loss = self.setup_train(model_file_path, emb_v_path=config.emb_v_path, emb_list_path=config.emb_list_path, vocab=self.vocab)
-        min_val_loss = np.inf
-
+        if config.mode not in ["MLE", "RL", "GTI", "SO", "SIO", "DAGGER", "DAGGER*"]:
+            print("\nTRAINING MODE ERROR\n")
+            raise ValueError
         # log file path
         log_path = os.path.join(config.log_root, 'log')
         log = open(log_path, 'w')
+        print_log("==============================", file=log)
+        iter, running_avg_loss = self.setup_train(model_file_path, emb_v_path=config.emb_v_path, emb_list_path=config.emb_list_path, vocab=self.vocab, log=log)
+        min_val_loss = np.inf
         
         alpha = config.alpha
         beta = config.beta
         k1 = config.k1
         k2 = config.k2
-        delay = 0
+        delay = iter # set to 0 in the original code (wyu-du)
+
+        print("\nLog root is %s" % config.log_root)
+        print_log("Train mode is %s" % config.mode, file=log)
+        print_log("k1: %s, k2: %s" % (config.k1, config.k2), file=log)
+        print_log("==============================", file=log)
+
+        cur_time = time.time()
         while iter < n_iters:
             if config.mode == 'RL':
                 alpha = 0.
@@ -208,8 +217,8 @@ class Train(object):
             iter += 1
             
             if iter % config.print_interval == 0:
-                print_log('steps %d, current_loss: %f, avg_reward: %f' % \
-                                (iter, loss, avg_reward), file=log)
+                print_log('steps %d, current_loss: %f, avg_reward: %f, alpha: %f, beta: %f, delay: %d' % \
+                            (iter, loss, avg_reward, alpha, beta, delay), file=log)
             
             if iter % config.save_model_iter == 0:
                 model_file_path = self.save_model(running_avg_loss, iter, mode='train')
@@ -219,13 +228,14 @@ class Train(object):
                     min_val_loss = val_avg_loss
                     best_model_file_path = self.save_model(running_avg_loss, iter, mode='eval')
                     print_log('Save best model at %s' % best_model_file_path, file=log)
-                print_log('steps %d, train_loss: %f, val_loss: %f' % \
-                                        (iter, loss, val_avg_loss), file=log)
+                print_log('steps %d, train_loss: %f, val_loss: %f, time: %ds' % \
+                                        (iter, loss, val_avg_loss, time.time()-cur_time), file=log)
                 # write val_loss into tensorboard
                 loss_sum = tf.compat.v1.Summary()
                 loss_sum.value.add(tag='val_avg_loss', simple_value=val_avg_loss)
                 self.summary_writer.add_summary(loss_sum, global_step=iter)
                 self.summary_writer.flush()
+                cur_time = time.time()
 
         log.close()
 
