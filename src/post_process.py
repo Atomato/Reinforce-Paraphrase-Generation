@@ -1,4 +1,5 @@
 import os
+import io
 import random
 import datetime
 import pyjosa
@@ -10,11 +11,17 @@ import nltk
 import config
 
 class PostProcess():
-	def __init__(self, input_path, output_path):
+	def __init__(self, input_path_or_input_list, output_path):
 		# load file to process
-		self.input_path = input_path
-		self.file = open(input_path,'rt',encoding='utf8')
+		if isinstance(input_path_or_input_list, str): # if a path is given as path string
+			self.file = open(input_path_or_input_list,'rt',encoding='utf8')
+		else: # if a path is given as list
+			self.file = input_path_or_input_list
 		self.output_path = output_path
+		self.is_filetype = lambda x: any([isinstance(x, io.TextIOBase),
+											isinstance(x, io.BufferedIOBase),
+											isinstance(x, io.RawIOBase),
+											isinstance(x, io.IOBase)])
 
 		# tokenizer
 		tok_path = get_tokenizer()
@@ -23,6 +30,7 @@ class PostProcess():
 		# rule set
 		with open(config.post_process_rule_path,'rt',encoding='utf8') as f:
 			self.rules = dict(map(lambda x:tuple(x.strip('\n').split('\t')),f))
+
 
 		#dict to store (x,y,y_pred) triplet
 		self.idx_map = ['x','y','y_pred']
@@ -108,7 +116,8 @@ class PostProcess():
 
 		with open(self.output_path,'wt',encoding='utf8') as f:
 			f.write(txt)
-		self.file.close()
+		if self.is_filetype(self.file):
+			self.file.close()
 
 
 
@@ -116,7 +125,7 @@ def main():
 	root_dir = os.getcwd()
 	input_path = os.path.join(root_dir,'new_hyperparam_result.txt')
 	now = datetime.datetime.now()
-	proc = PostProcess(input_path=input_path, output_path = 'processed_{:02d}{:02d}{:02d}{:02d}.txt'.format(now.month,now.day,now.hour,now.minute))
+	proc = PostProcess(input_path_or_input_list=input_path, output_path = 'processed_{:02d}{:02d}{:02d}{:02d}.txt'.format(now.month,now.day,now.hour,now.minute))
 	proc.run()
 
 if __name__ == '__main__':
