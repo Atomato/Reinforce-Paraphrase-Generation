@@ -112,8 +112,8 @@ def set_embedding(model, emb_v_path, emb_list_path, vocab, use_cuda, log):
     if emb_v_path is None or emb_list_path is None or vocab is None : return
          
     vocab_map = vocab._word_to_id
-    with open(emb_list_path,'rt',encoding='utf8') as f: 
-        emb_list = [line.strip() for line in f]
+    with open(emb_list_path,'rt',encoding='utf8') as f:
+        emb_list = [line.split()[0].strip()  for line in f]
     emb_v = np.genfromtxt(emb_v_path)
 
     # initialize embedding with truncated normal

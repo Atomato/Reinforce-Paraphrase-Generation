@@ -169,7 +169,7 @@ class Train(object):
         log_path = os.path.join(config.log_root, 'log')
         log = open(log_path, 'w')
         print_log("==============================", file=log)
-        iter, running_avg_loss = self.setup_train(model_file_path, emb_v_path=config.emb_v_path, emb_list_path=config.emb_list_path, vocab=self.vocab, log=log)
+        iter, running_avg_loss = self.setup_train(model_file_path, emb_v_path=config.emb_v_path, emb_list_path=config.vocab_path, vocab=self.vocab, log=log)
         min_val_loss = np.inf
         
         alpha = config.alpha
