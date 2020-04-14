@@ -75,7 +75,6 @@ class PostProcess():
 	def correct_numbering(self, txt, orig_txt):
 		for num_key in self.num_2_txt:
 			orig_match = re.compile(num_key).match(orig_txt)
-			print(orig_txt, txt)
 			if orig_match:
 				after_korean_match = re.compile('^[\ 가-힣]+,').match(txt)
 				after_num_match = re.compile('^\([0-9]\)+').match(txt)
