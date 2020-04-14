@@ -115,6 +115,7 @@ def decimal_to_eq(sentence, equation=None):
         else:
             sentence_new = sentence_new + sentence[next_begin:de_list[i][0]] + "(수식)" + sentence[de_list[i][1]:]
     x = 0
+
     if equation:
         eq_idx = br_list + de_list
         eq_idx.sort()
@@ -123,7 +124,7 @@ def decimal_to_eq(sentence, equation=None):
                 equation_new.append(equation[x])
                 x += 1
             else:
-                equation_new.append(sentence[eq_idx[i][0]:eq_idx[i][1]])
+                equation_new.append("$"+sentence[eq_idx[i][0]:eq_idx[i][1]]+"$")
         return [sentence_new, equation_new]
     else:
         return sentence_new
