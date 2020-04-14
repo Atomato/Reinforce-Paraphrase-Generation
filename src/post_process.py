@@ -37,12 +37,13 @@ class PostProcess():
 		self.inst_dict = {}
 
 		# numbers / hipen
-		self.num_2_txt = {'(1)': ['우선,','먼저,','처음으로,'],
-						  '(2)':['이어서,','다음으로,',''],
-						  '(3)':['이어서,','다음으로,',''],
-						  '(4)':['이어서,','다음으로,',''],
-						  '(5)':['이어서,','다음으로,',''],
-						  '-' : ['']}
+		self.num_2_txt = {'^\(1\)':['우선,','먼저,','처음으로,'],
+						  '^\(2\)':['두 번째로,', '이어서,','다음으로,'],
+						  '^\(3\)':['세 번째로,','이어서,','다음으로,'],
+						  '^\(4\)':['네 번째로,','이어서,','다음으로,'],
+						  '^\(5\)':['다섯 번째로,','이어서,','다음으로,'],
+						  '^\(6\)':['여섯 번째로,','이어서,','다음으로,']
+                          }
 
 
 	def map_dict_by_idx(self, idx, txt):
@@ -50,10 +51,9 @@ class PostProcess():
 		if idx == 3: return
 		self.inst_dict[self.idx_map[idx]] = txt.replace(self.idx_map[idx]+':','').strip()
 
-
-	def process_by_idx(self, idx, txt):
+	def process_by_idx(self, idx, txt, orig_txt):
 		if idx % 4 == 2: # y_pred lines
-			txt = self.correct_numbering(txt)
+			txt = self.correct_numbering(txt.replace('y_pred:\t',''), orig_txt.replace('x:\t',''))
 			txt = self.replace_colon(txt)
 			txt = self.rep_wrong_char(txt)
 			txt = self.tag_strange_txt(txt)
@@ -72,9 +72,24 @@ class PostProcess():
 			txt += ' [주의]'
 		return txt
 
-	def correct_numbering(self, txt):
-		for k,v in self.num_2_txt.items():
-			if k in txt: txt = txt.replace(k,random.choice(v))
+	def correct_numbering(self, txt, orig_txt):
+		for num_key in self.num_2_txt:
+			orig_match = re.compile(num_key).match(orig_txt)
+			print(orig_txt, txt)
+			if orig_match:
+				after_korean_match = re.compile('^[\ 가-힣]+,').match(txt)
+				after_num_match = re.compile('^\([0-9]\)+').match(txt)
+				if after_korean_match and after_korean_match.group() not in self.num_2_txt[num_key]: 
+					txt = random.choice(self.num_2_txt[num_key])+txt[after_korean_match.span()[1]:]
+					return txt
+				elif not after_korean_match and after_num_match:
+					txt = random.choice(self.num_2_txt[num_key])+txt[after_num_match.span()[1]:]
+					return txt
+                
+		dash_match = re.compile('^-').match(txt)
+		if dash_match:
+			txt = txt[dash_match.span()[1]:]
+            
 		return txt
 
 	def replace_colon(self, txt):
@@ -90,9 +105,11 @@ class PostProcess():
 	def post_process(self):
 		inst_list = []
 		bleu_list = []
+		orig_txt = ''
 		for idx,line in enumerate(self.file):
 			line = line.strip()
-			line = self.process_by_idx(idx,line)
+			if idx % 4 == 0: orig_txt = line
+			line = self.process_by_idx(idx,line,orig_txt)
 			self.map_dict_by_idx(idx,line)
 			if idx % 4 == 3: # if reading an instance ends
 				sent_bleu = nltk.translate.bleu_score.sentence_bleu([self.tokenizer(self.inst_dict['y'])],
