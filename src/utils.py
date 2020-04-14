@@ -4,7 +4,6 @@ import os
 # import pyrouge
 import logging
 
-SPECIAL_TOKENS = ['<expr>', '<unvar>', '<equl>', '<arrw>']
 
 def print_results(article, abstract, decoded_output):
   print ("")

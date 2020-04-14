@@ -107,13 +107,13 @@ def gen_preds(samples_batch, use_cuda):
                 latest_batch[i,j] = 0 # UNK_TOKEN
     return latest_batch
 
-def set_embedding(model, emb_v_path, emb_list_path, vocab, log):
+def set_embedding(model, emb_v_path, emb_list_path, vocab, use_cuda, log):
     # Use random initialization if path is None
     if emb_v_path is None or emb_list_path is None or vocab is None : return
          
     vocab_map = vocab._word_to_id
-    with open(emb_list_path,'rt',encoding='utf8') as f: 
-        emb_list = [line.strip() for line in f]
+    with open(emb_list_path,'rt',encoding='utf8') as f:
+        emb_list = [line.split()[0].strip()  for line in f]
     emb_v = np.genfromtxt(emb_v_path)
 
     # initialize embedding with truncated normal
@@ -132,3 +132,7 @@ def set_embedding(model, emb_v_path, emb_list_path, vocab, log):
     # tie encoder/decoder embedding
     model.encoder.embedding.weight = torch.nn.Parameter(torch.from_numpy(temp_emb).float())
     model.decoder.embedding.weight = model.encoder.embedding.weight
+
+    if use_cuda:
+        model.encoder = model.encoder.cuda()
+        model.decoder = model.decoder.cuda()
