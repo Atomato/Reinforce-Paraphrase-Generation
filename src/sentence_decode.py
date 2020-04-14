@@ -85,6 +85,44 @@ def kobert_tokenizer(sentence):
         return sentence
 
 
+def decimal_to_eq(sentence, equation=None):
+    sentence_new = ""
+    equation_new = []
+
+    decimal_expression = re.compile("[0-9A-z]+[.][0-9A-z]+")
+    bracket_expression = re.compile("\([가-힣]+\)")
+    eq_tokens = ['(수식)', '(미지수)', '(화살표)', '(등호)', '(부등호)']
+
+    br_iter = bracket_expression.finditer(sentence)
+    de_iter = decimal_expression.finditer(sentence)
+    br_list = []
+    de_list = []
+    for br in br_iter:
+        br_list.append(br.span())
+    for de in de_iter:
+        de_list.append(de.span())
+    n_de = len(de_list)
+    next_begin = 0
+    for i in range(len(de_list)):
+        if i < n_de - 1:
+            sentence_new = sentence_new + sentence[next_begin:de_list[i][0]] + "(수식)"
+            next_begin = de_list[i][1]
+        else:
+            sentence_new = sentence_new + sentence[next_begin:de_list[i][0]] + "(수식)" + sentence[de_list[i][1]:]
+    x = 0
+    if equation:
+        eq_idx = br_list + de_list
+        eq_idx.sort()
+        for i in range(len(eq_idx)):
+            if eq_idx[i] in br_list:
+                equation_new.append(equation[x])
+                x += 1
+            else:
+                equation_new.append(sentence[eq_idx[i][0]:eq_idx[i][1]])
+        return [sentence_new, equation_new]
+    else:
+        return sentence_new
+
 # Except for the pytorch part content of this file is copied from https://github.com/abisee/pointer-generator/blob/master/
 class Example(object):
     def __init__(self, article, abstract_sentences, vocab):
