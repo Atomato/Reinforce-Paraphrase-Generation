@@ -102,6 +102,11 @@ def decimal_to_eq(sentence, equation=None):
     for de in de_iter:
         de_list.append(de.span())
     n_de = len(de_list)
+    if not n_de:
+        if type(equation) == list:
+            return [sentence, equation]
+        else:
+            return sentence
     next_begin = 0
     for i in range(len(de_list)):
         if i < n_de - 1:
