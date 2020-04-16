@@ -5,43 +5,48 @@ import struct
 import csv
 from tensorflow.core.example import example_pb2
 
+from kobert_transformers import get_tokenizer
+
 # <s> and </s> are used in the data files to segment the abstracts into sentences. They don't receive vocab ids.
 SENTENCE_START = '<s>'
 SENTENCE_END = '</s>'
 
 PAD_TOKEN = '[PAD]' # This has a vocab id, which is used to pad the encoder input, decoder input and target sequence
 UNKNOWN_TOKEN = '[UNK]' # This has a vocab id, which is used to represent out-of-vocabulary words
-START_DECODING = '[START]' # This has a vocab id, which is used at the start of every decoder input sequence
-STOP_DECODING = '[STOP]' # This has a vocab id, which is used at the end of untruncated target sequences
+START_DECODING = '[CLS]' # This has a vocab id, which is used at the start of every decoder input sequence
+STOP_DECODING = '[SEP]' # This has a vocab id, which is used at the end of untruncated target sequences
 # Note: none of <s>, </s>, [PAD], [UNK], [START], [STOP] should appear in the vocab file.
 
 
 class Vocab(object):
   def __init__(self, vocab_file, max_size):
+    tokenizer = get_tokenizer()
     self._word_to_id = {}
     self._id_to_word = {}
     self._count = 0 # keeps track of total number of words in the Vocab
 
     # [UNK], [PAD], [START] and [STOP] get the ids 0,1,2,3.
-    for w in [UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING]:
-      self._word_to_id[w] = self._count
-      self._id_to_word[self._count] = w
-      self._count += 1
+    # for w in [UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING]:
+    #   self._word_to_id[w] = self._count
+    #   self._id_to_word[self._count] = w
+    #   self._count += 1
 
     # Read the vocab file and add words up to max_size
     with open(vocab_file, 'r', encoding='utf8') as vocab_f:
       for line in vocab_f:
         pieces = line.split()
-        if len(pieces) != 2:
+        if len(pieces) != 1:
           print('Warning: incorrectly formatted line in vocabulary file: %s\n' % line)
           continue
         w = pieces[0]
-        if w in [SENTENCE_START, SENTENCE_END, UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING]:
-          raise Exception('<s>, </s>, [UNK], [PAD], [START] and [STOP] shouldn\'t be in the vocab file, but %s is' % w)
+        # if w in [SENTENCE_START, SENTENCE_END, UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING]:
+        #   raise Exception('<s>, </s>, [UNK], [PAD], [START] and [STOP] shouldn\'t be in the vocab file, but %s is' % w)
         if w in self._word_to_id:
           raise Exception('Duplicated word in vocabulary file: %s' % w)
         self._word_to_id[w] = self._count
         self._id_to_word[self._count] = w
+        if tokenizer.convert_tokens_to_ids(w) != self._count:
+          raise Exception('Word do not match: %s, %d' % (w, self._count))
         self._count += 1
         if max_size != 0 and self._count >= max_size:
 #          print("max_size of vocab was specified as %i; we now have %i words. Stopping reading." % (max_size, self._count))

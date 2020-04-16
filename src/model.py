@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
+from kobert_transformers import get_distilkobert_model
+
 use_cuda = config.use_gpu and torch.cuda.is_available()
 torch.manual_seed(123)
 if torch.cuda.is_available():
@@ -36,12 +38,34 @@ def init_wt_normal(wt):
 def init_wt_unif(wt):
     wt.data.uniform_(-config.rand_unif_init_mag, config.rand_unif_init_mag)
 
+class DistilKoBERT_Embedding(nn.Module):
+    def __init__(self):
+        super(DistilKoBERT_Embedding, self).__init__()
+        self.model = get_distilkobert_model()
+
+    def gen_attention_mask(self, token_ids, valid_length):
+        attention_mask = torch.zeros_like(token_ids)
+        for i, v in enumerate(valid_length):
+            attention_mask[i][:v] = 1
+        return attention_mask.float()
+
+    def forward(self, input, seq_lens=None, decoder=False):
+        if not decoder:
+            attention_mask = self.gen_attention_mask(input.float(), seq_lens)
+            output = self.model(input_ids=input, attention_mask=attention_mask)[0]
+        else:
+            output = torch.zeros(input.size(0), config.emb_dim)
+            for idx, inp in enumerate(input):
+                output[idx] = self.model(input_ids=inp.unsqueeze(0).unsqueeze(1))[0]
+            if use_cuda:
+                output = output.cuda()
+        return output
 
 class Encoder(nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
-        self.embedding = nn.Embedding(config.vocab_size, config.emb_dim)
-        init_wt_normal(self.embedding.weight)
+        # self.embedding = nn.Embedding(config.vocab_size, config.emb_dim)
+        self.embedding = DistilKoBERT_Embedding()
         self.lstm = nn.LSTM(config.emb_dim, config.hidden_dim, num_layers=1, 
                             batch_first=True, bidirectional=True)
         init_lstm_wt(self.lstm)
@@ -49,7 +73,7 @@ class Encoder(nn.Module):
 
     # seq_lens should be in descending order
     def forward(self, input, seq_lens):
-        embedded = self.embedding(input)
+        embedded = self.embedding(input, seq_lens)
         packed = pack_padded_sequence(embedded, seq_lens, batch_first=True)
         output, hidden = self.lstm(packed) # hidden = ((2 x B x H), (2 x B x H))
         encoder_outputs, _ = pad_packed_sequence(output, batch_first=True) # B x L x 2H
@@ -121,8 +145,7 @@ class Decoder(nn.Module):
     def __init__(self):
         super(Decoder, self).__init__()
         self.attention_network = Attention()
-        self.embedding = nn.Embedding(config.vocab_size, config.emb_dim)
-        init_wt_normal(self.embedding.weight)
+        self.embedding = DistilKoBERT_Embedding()
         self.x_context = nn.Linear(config.hidden_dim * 2 + config.emb_dim, config.emb_dim)
         self.lstm = nn.LSTM(config.emb_dim, config.hidden_dim, num_layers=1, 
                             batch_first=True, bidirectional=False)
@@ -145,8 +168,7 @@ class Decoder(nn.Module):
             c_t, _, coverage_next = self.attention_network(s_t_hat, encoder_outputs, encoder_feature,
                                                            enc_padding_mask, coverage)
             coverage = coverage_next  # B x L
-
-        y_t_1_embd = self.embedding(y_t_1) #  B x E
+        y_t_1_embd = self.embedding(y_t_1, decoder=True) #  B x E
         x = self.x_context(torch.cat((c_t_1, y_t_1_embd), 1)) # B x E
         lstm_out, s_t = self.lstm(x.unsqueeze(1), s_t_1)
 
@@ -186,8 +208,6 @@ class Model(object):
         encoder = Encoder()
         decoder = Decoder()
         reduce_state = ReduceState()
-        # shared the embedding between encoder and decoder
-        decoder.embedding.weight = encoder.embedding.weight
         
         if is_eval:
             self.encoder = encoder.eval()
@@ -197,6 +217,8 @@ class Model(object):
             self.encoder = encoder.train()
             self.decoder = decoder.train()
             self.reduce_state = reduce_state.train()
+            self.encoder.embedding.eval()
+            self.decoder.embedding.eval()
 
         if use_cuda:
             self.encoder = encoder.cuda()
