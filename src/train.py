@@ -51,10 +51,7 @@ class Train(object):
     def save_model(self, running_avg_loss, iter, mode):
         state = {
             'iter': iter,
-            'encoder_state_dict': self.model.encoder.state_dict(),
-            'decoder_state_dict': self.model.decoder.state_dict(),
-            'reduce_state_dict': self.model.reduce_state.state_dict(),
-            'optimizer': self.optimizer.state_dict(),
+            'kogpt2_state_dict': self.model.kogpt2.state_dict(),
             'current_loss': running_avg_loss
         }
         if mode == 'train':
@@ -76,10 +73,7 @@ class Train(object):
 
     def setup_train(self, model_file_path=None, emb_v_path=None, emb_list_path = None, vocab = None, log=None):
         self.model = Model(model_file_path)
-        if model_file_path is None:
-            set_embedding(self.model, emb_v_path = emb_v_path, emb_list_path = emb_list_path, vocab = self.vocab, use_cuda = use_cuda, log = log)
-        params = list(self.model.encoder.parameters()) + list(self.model.decoder.parameters()) + \
-                 list(self.model.reduce_state.parameters())
+        params = list(self.model.kogpt2.parameters())
         initial_lr = config.lr_coverage if config.is_coverage else config.lr
         if config.mode == 'MLE':
             self.optimizer = Adagrad(params, lr=0.15, initial_accumulator_value=0.1)
@@ -96,67 +90,22 @@ class Train(object):
     
 
     def train_one_batch(self, batch, alpha, beta):
-        enc_batch, enc_padding_mask, enc_lens, enc_batch_extend_vocab, extra_zeros, c_t_1, coverage = \
-            get_input_from_batch(batch, use_cuda)
-        dec_batch, dec_padding_mask, max_dec_len, dec_lens_var, target_batch = \
-            get_output_from_batch(batch, use_cuda)
+        enc_dec_batch, enc_dec_padding_mask, max_enc_dec_len, enc_dec_lens_var, enc_dec_target_batch = \
+            get_inout_from_batch(batch, use_cuda)
 
         self.optimizer.zero_grad()
         
-        encoder_outputs, encoder_feature, encoder_hidden = self.model.encoder(enc_batch, enc_lens)
-        s_t_1 = self.model.reduce_state(encoder_hidden)
-        
-        nll_list= []
-        gen_summary = torch.LongTensor(config.batch_size*[config.sample_size*[[2]]]) # B x S x 1
-        if use_cuda: gen_summary = gen_summary.cuda()
-        preds_y = gen_summary.squeeze(2) # B x S
-        for di in range(min(config.max_dec_steps, dec_batch.size(1))):
-            # Select the current input word
-            p1 = np.random.uniform()
-            if p1 < alpha: # use ground truth word
-                y_t_1 = dec_batch[:, di]
-            else: # use decoded word
-                y_t_1 = preds_y[:, 0]
-            
-            final_dist, s_t_1,  c_t_1, attn_dist, p_gen, next_coverage = self.model.decoder(y_t_1, s_t_1,
-                                                        encoder_outputs, encoder_feature, enc_padding_mask, 
-                                                        c_t_1, extra_zeros, enc_batch_extend_vocab,
-                                                        coverage, di)
-            
-            # Select the current output word
-            p2 = np.random.uniform()
-            if p2 < beta: # sample the ground truth word
-                target = target_batch[:, di]
-                sampled_batch = torch.stack(config.sample_size*[target], 1) # B x S
-            else: # randomly sample a word with given probabilities
-                sampled_batch = torch.multinomial(final_dist, config.sample_size, replacement=True) # B x S
-            
-            # Compute the NLL
-            probs = torch.gather(final_dist, 1, sampled_batch).squeeze()
-            step_nll = -torch.log(probs + config.eps)
-            
-            if config.is_coverage:
-                step_coverage_loss = torch.sum(torch.min(attn_dist, coverage), 1)
-                step_nll = step_nll + config.cov_loss_wt * step_coverage_loss
-                coverage = next_coverage
-            nll_list.append(step_nll)
-                
-            # Store the decoded words in preds_y
-            preds_y = gen_preds(sampled_batch, use_cuda)
-            # Add the decoded words into gen_summary (mixed with ground truth and decoded words)
-            gen_summary = torch.cat((gen_summary, preds_y.unsqueeze(2)), 2) # B x S x L
-
-        # compute the REINFORCE score        
-        nll = torch.sum(torch.stack(nll_list, 2), 2)  # B x S
-        all_rewards, avg_reward = compute_reward(batch, gen_summary, self.vocab, config.mode, use_cuda) # B x S, 1
-        batch_loss = torch.sum(nll * all_rewards, dim=1)  # B
+        # print(enc_dec_batch, enc_dec_batch.shape)
+        final_dist_batch, _ = self.model.kogpt2(enc_dec_batch) # B x L x V
+        probs = torch.gather(final_dist_batch, 2, enc_dec_target_batch.unsqueeze(2)).squeeze() # B x L
+        step_nll = -torch.log(probs + config.eps) # B x L
+        batch_loss = torch.sum(step_nll, dim=1)  # B
         loss = torch.mean(batch_loss)
 
+        avg_reward = torch.zeros(1)
         loss.backward()
 
-        self.norm = clip_grad_norm_(self.model.encoder.parameters(), config.max_grad_norm)
-        clip_grad_norm_(self.model.decoder.parameters(), config.max_grad_norm)
-        clip_grad_norm_(self.model.reduce_state.parameters(), config.max_grad_norm)
+        self.norm = clip_grad_norm_(self.model.kogpt2.parameters(), config.max_grad_norm)
 
         self.optimizer.step()
         return loss.item(), avg_reward.item()
@@ -237,6 +186,9 @@ class Train(object):
                 self.summary_writer.add_summary(loss_sum, global_step=iter)
                 self.summary_writer.flush()
                 cur_time = time.time()
+
+                # To evade Out of Memory error
+                del evl_model
 
         log.close()
 

@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
+from kogpt2.pytorch_kogpt2 import get_pytorch_kogpt2_model
+
 use_cuda = config.use_gpu and torch.cuda.is_available()
 torch.manual_seed(123)
 if torch.cuda.is_available():
@@ -180,31 +182,28 @@ class Decoder(nn.Module):
             final_dist = vocab_dist
         return final_dist, s_t, c_t, attn_dist, p_gen, coverage
 
+class KoGPT2(nn.Module):
+    def __init__(self):
+        super(KoGPT2, self).__init__()
+        self.kogpt2, self.vocab = get_pytorch_kogpt2_model()
+
+    def forward(self, input_ids, past=None):
+        pred, past = self.kogpt2(input_ids=input_ids, past=past) # B x L x V
+        vocab_dist = F.softmax(pred, dim=2) # B x L x V
+        return vocab_dist, past
 
 class Model(object):
     def __init__(self, model_file_path=None, is_eval=False):
-        encoder = Encoder()
-        decoder = Decoder()
-        reduce_state = ReduceState()
-        # shared the embedding between encoder and decoder
-        decoder.embedding.weight = encoder.embedding.weight
+        kogpt2 = KoGPT2()
         
         if is_eval:
-            self.encoder = encoder.eval()
-            self.decoder = decoder.eval()
-            self.reduce_state = reduce_state.eval()
+            self.kogpt2 = kogpt2.eval()
         else:
-            self.encoder = encoder.train()
-            self.decoder = decoder.train()
-            self.reduce_state = reduce_state.train()
+            self.kogpt2 = kogpt2.train()
 
         if use_cuda:
-            self.encoder = encoder.cuda()
-            self.decoder = decoder.cuda()
-            self.reduce_state = reduce_state.cuda()
+            self.kogpt2 = kogpt2.cuda()
 
         if model_file_path is not None:
             state = torch.load(model_file_path, map_location= lambda storage, location: storage)
-            self.encoder.load_state_dict(state['encoder_state_dict'])
-            self.decoder.load_state_dict(state['decoder_state_dict'], strict=False)
-            self.reduce_state.load_state_dict(state['reduce_state_dict'])
+            self.kogpt2.load_state_dict(state['kogpt2_state_dict'])

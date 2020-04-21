@@ -57,6 +57,21 @@ def get_output_from_batch(batch, use_cuda):
         target_batch = target_batch.cuda()
     return dec_batch, dec_padding_mask, max_dec_len, dec_lens_var, target_batch
 
+def get_inout_from_batch(batch, use_cuda):
+    enc_dec_batch = Variable(torch.from_numpy(batch.enc_dec_batch).long())
+    enc_dec_padding_mask = Variable(torch.from_numpy(batch.enc_dec_padding_mask)).float()
+    enc_dec_lens = batch.enc_dec_lens
+    max_enc_dec_len = np.max(enc_dec_lens)
+    enc_dec_lens_var = Variable(torch.from_numpy(enc_dec_lens)).float()
+
+    enc_dec_target_batch = Variable(torch.from_numpy(batch.enc_dec_target_batch)).long()
+
+    if use_cuda:
+        enc_dec_batch = enc_dec_batch.cuda()
+        enc_dec_padding_mask = enc_dec_padding_mask.cuda()
+        enc_dec_lens_var = enc_dec_lens_var.cuda()
+        enc_dec_target_batch = enc_dec_target_batch.cuda()
+    return enc_dec_batch, enc_dec_padding_mask, max_enc_dec_len, enc_dec_lens_var, enc_dec_target_batch
 
 def compute_reward(batch, decode_batch, vocab, mode, use_cuda):
     target_sents = batch.original_abstracts  # list of string

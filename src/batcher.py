@@ -19,8 +19,8 @@ class Example(object):
 
     # Process the article
     article_words = article.split()
-    if len(article_words) > config.max_enc_steps:
-      article_words = article_words[:config.max_enc_steps]
+    # if len(article_words) > config.max_enc_steps:
+    #   article_words = article_words[:config.max_enc_steps]
     self.enc_len = len(article_words) # store the length after truncation but before padding
     self.enc_input = [vocab.word2id(w) for w in article_words] # list of word ids; OOVs are represented by the id for UNK token
     
@@ -32,6 +32,9 @@ class Example(object):
     # Get the decoder input sequence and target sequence
     self.dec_input, self.target = self.get_dec_inp_targ_seqs(abs_ids, config.max_dec_steps, start_decoding, stop_decoding)
     self.dec_len = len(self.dec_input)
+
+    self.enc_dec_input, self.enc_dec_target = self.get_dec_inp_targ_seqs(self.enc_input + [stop_decoding] + abs_ids, config.max_enc_dec_steps, start_decoding, stop_decoding)
+    self.enc_dec_len = len(self.enc_dec_input)
 
     # If using pointer-generator mode, we need to store some extra info
     if config.pointer_gen:
@@ -77,7 +80,11 @@ class Example(object):
       while len(self.enc_input_extend_vocab) < max_len:
         self.enc_input_extend_vocab.append(pad_id)
 
-
+  def pad_enc_dec_input(self, max_len, pad_id):
+    while len(self.enc_dec_input) < max_len:
+      self.enc_dec_input.append(pad_id)
+    while len(self.enc_dec_target) < max_len:
+      self.enc_dec_target.append(pad_id)
 
 class Batch(object):
   def __init__(self, example_list, vocab, batch_size):
@@ -85,6 +92,7 @@ class Batch(object):
     self.pad_id = vocab.word2id(data.PAD_TOKEN) # id of the PAD token used to pad sequences
     self.init_encoder_seq(example_list) # initialize the input to the encoder
     self.init_decoder_seq(example_list) # initialize the input and targets for the decoder
+    self.init_enc_dec_seq(example_list) # initialize the input and targets for the endcoder-decoder
     self.store_orig_strings(example_list) # store the original strings
 
 
@@ -140,6 +148,24 @@ class Batch(object):
       for j in range(ex.dec_len):
         self.dec_padding_mask[i][j] = 1
 
+  def init_enc_dec_seq(self, example_list):
+    # Pad the inputs and targets
+    for ex in example_list:
+      ex.pad_enc_dec_input(config.max_enc_dec_steps, self.pad_id)
+
+    # Initialize the numpy arrays.
+    self.enc_dec_batch = np.zeros((self.batch_size, config.max_enc_dec_steps), dtype=np.int32)
+    self.enc_dec_target_batch = np.zeros((self.batch_size, config.max_enc_dec_steps), dtype=np.int32)
+    self.enc_dec_padding_mask = np.zeros((self.batch_size, config.max_enc_dec_steps), dtype=np.float32)
+    self.enc_dec_lens = np.zeros((self.batch_size), dtype=np.int32)
+
+    # Fill in the numpy arrays
+    for i, ex in enumerate(example_list):
+      self.enc_dec_batch[i, :] = ex.enc_dec_input[:]
+      self.enc_dec_target_batch[i, :] = ex.enc_dec_target[:]
+      self.enc_dec_lens[i] = ex.enc_dec_len
+      for j in range(ex.enc_dec_len):
+        self.enc_dec_padding_mask[i][j] = 1
 
   def store_orig_strings(self, example_list):
     self.original_articles = [ex.original_article for ex in example_list] # list of lists
