@@ -17,25 +17,21 @@ from model import Model
 from utils import write_for_rouge, rouge_eval, rouge_log, write_for_result
 from train_util import get_input_from_batch
 
-from post_process import PostProcess
+# from post_process import PostProcess
 
 use_cuda = config.use_gpu and torch.cuda.is_available()
 
 
 class Beam(object):
-  def __init__(self, tokens, log_probs, state, context, coverage):
+  def __init__(self, tokens, log_probs, past):
     self.tokens = tokens
     self.log_probs = log_probs
-    self.state = state
-    self.context = context
-    self.coverage = coverage
+    self.past = past
 
-  def extend(self, token, log_prob, state, context, coverage):
+  def extend(self, token, log_prob, past):
     return Beam(tokens = self.tokens + [token],
                       log_probs = self.log_probs + [log_prob],
-                      state = state,
-                      context = context,
-                      coverage = coverage)
+                      past = past)
 
   @property
   def latest_token(self):
@@ -87,19 +83,20 @@ class BeamSearch(object):
         enc_batch, enc_padding_mask, enc_lens, enc_batch_extend_vocab, extra_zeros, c_t_0, coverage_t_0 = \
             get_input_from_batch(batch, use_cuda)
 
-        encoder_outputs, encoder_feature, encoder_hidden = self.model.encoder(enc_batch, enc_lens)
-        s_t_0 = self.model.reduce_state(encoder_hidden)
+        # encoder_outputs, encoder_feature, encoder_hidden = self.model.encoder(enc_batch, enc_lens)
+        # s_t_0 = self.model.reduce_state(encoder_hidden)
 
-        dec_h, dec_c = s_t_0 # 1 x 2H
-        dec_h = dec_h.squeeze()
-        dec_c = dec_c.squeeze()
+        # past: 12 tensor of shape (2 x B x 12 x L x 64)
+        _, past = self.model.kogpt2(enc_batch)
+
+        # dec_h, dec_c = s_t_0 # 1 x 2H
+        # dec_h = dec_h.squeeze()
+        # dec_c = dec_c.squeeze()
 
         # decoder batch preparation, it has beam_size example initially everything is repeated
-        beams = [Beam(tokens=[self.vocab.word2id(data.START_DECODING)],
+        beams = [Beam(tokens=[self.vocab.word2id(data.STOP_DECODING)],
                       log_probs=[0.0],
-                      state=(dec_h[0], dec_c[0]),
-                      context = c_t_0[0],
-                      coverage=(coverage_t_0[0] if config.is_coverage else None))
+                      past=tuple(p[:, 0] for p in past))
                  for _ in range(config.beam_size)]
         results = []
         steps = 0
@@ -108,54 +105,67 @@ class BeamSearch(object):
             latest_tokens = [t if t < self.vocab.size() else self.vocab.word2id(data.UNKNOWN_TOKEN) \
                              for t in latest_tokens]
 
-            y_t_1 = Variable(torch.LongTensor(latest_tokens))
+            # B x 1
+            input_ids = Variable(torch.LongTensor(latest_tokens).unsqueeze(1))
             if use_cuda:
-                y_t_1 = y_t_1.cuda()
-            all_state_h =[]
-            all_state_c = []
-            all_context = []
+                input_ids = input_ids.cuda()
+            # all_state_h =[]
+            # all_state_c = []
+            # all_context = []
+
+            # 12 x []
+            all_past = [[] for _ in range(len(beams[0].past))]
 
             for h in beams:
-                state_h, state_c = h.state
-                all_state_h.append(state_h)
-                all_state_c.append(state_c)
-                all_context.append(h.context)
+                # state_h, state_c = h.state
+                # all_state_h.append(state_h)
+                # all_state_c.append(state_c)
+                # all_context.append(h.context)
 
-            s_t_1 = (torch.stack(all_state_h, 0).unsqueeze(0), torch.stack(all_state_c, 0).unsqueeze(0))
-            c_t_1 = torch.stack(all_context, 0)
+                # h.past: 12 tensor of shape (2 x 12 x L x 64)
+                for i, pt in enumerate(h.past):
+                    all_past[i].append(h.past[i])
 
-            coverage_t_1 = None
-            if config.is_coverage:
-                all_coverage = []
-                for h in beams:
-                    all_coverage.append(h.coverage)
-                coverage_t_1 = torch.stack(all_coverage, 0)
+    
+    
+            # s_t_1 = (torch.stack(all_state_h, 0).unsqueeze(0), torch.stack(all_state_c, 0).unsqueeze(0))
+            # c_t_1 = torch.stack(all_context, 0)
 
-            final_dist, s_t, c_t, attn_dist, p_gen, coverage_t = self.model.decoder(y_t_1, s_t_1,
-                                                        encoder_outputs, encoder_feature, enc_padding_mask, c_t_1,
-                                                        extra_zeros, enc_batch_extend_vocab, coverage_t_1, steps)
+            past = []
+            for pt in all_past:
+                past.append(torch.stack(pt, 1))
+            past = tuple(past) # 12 tensor of shape (2 x B x 12 x L x 64)
 
-            log_probs = torch.log(final_dist)
+            # final_dist, s_t, c_t, attn_dist, p_gen, coverage_t = self.model.decoder(y_t_1, s_t_1,
+            #                                             encoder_outputs, encoder_feature, enc_padding_mask, c_t_1,
+            #                                             extra_zeros, enc_batch_extend_vocab, coverage_t_1, steps)
+
+            # final_dist: B x 1 x 50000
+            # past: 12 tensor of shape (2 x B x 12 x L x 64)
+            final_dist, past = self.model.kogpt2(input_ids, past=past)
+
+            log_probs = torch.log(final_dist.squeeze(1)) # B x 50000
+            # topk_log_probs, topk_ids: B x 2B
             topk_log_probs, topk_ids = torch.topk(log_probs, config.beam_size * 2)
 
-            dec_h, dec_c = s_t
-            dec_h = dec_h.squeeze()
-            dec_c = dec_c.squeeze()
+            # dec_h, dec_c = s_t
+            # dec_h = dec_h.squeeze()
+            # dec_c = dec_c.squeeze()
 
             all_beams = []
             num_orig_beams = 1 if steps == 0 else len(beams)
             for i in range(num_orig_beams):
                 h = beams[i]
-                state_i = (dec_h[i], dec_c[i])
-                context_i = c_t[i]
-                coverage_i = (coverage_t[i] if config.is_coverage else None)
+                # state_i = (dec_h[i], dec_c[i])
+                # context_i = c_t[i]
+                # coverage_i = (coverage_t[i] if config.is_coverage else None)
+                # 12 tensor of shape (2 x 12 x L x 64)
+                past_i = tuple(p[:, i] for p in past)
 
                 for j in range(config.beam_size * 2):  # for each of the top 2*beam_size hyps:
                     new_beam = h.extend(token=topk_ids[i, j].item(),
                                    log_prob=topk_log_probs[i, j].item(),
-                                   state=state_i,
-                                   context=context_i,
-                                   coverage=coverage_i)
+                                   past=past_i)
                     all_beams.append(new_beam)
 
             beams = []
@@ -227,7 +237,7 @@ class BeamSearch(object):
 
         if self.data_class == 'val':
             print('Average BLEU score:', np.mean(bleu_scores))
-            with open(self._result_path, "a") as f:
+            with open(self._result_path, "a", encoding='utf-8') as f:
                 print('Average BLEU score:', np.mean(bleu_scores), file=f)
 
     def get_processed_path(self):
@@ -246,18 +256,18 @@ if __name__ == '__main__':
     print('Done!\n')
 
 
-    beam_Search_processor_test = BeamSearch(model_filename, config.decode_data_path,
-                                                                data_class='test')
-    print('Decoding test set...')
-    beam_Search_processor_test.decode()
-    print('Done!\n')
+    # beam_Search_processor_test = BeamSearch(model_filename, config.decode_data_path,
+    #                                                             data_class='test')
+    # print('Decoding test set...')
+    # beam_Search_processor_test.decode()
+    # print('Done!\n')
 
-    print('Post-processing...')
-    input_val, output_val = beam_Search_processor_val.get_processed_path()
-    proc_val = PostProcess(input_val, output_val)
-    proc_val.write_processed_file()
+    # print('Post-processing...')
+    # input_val, output_val = beam_Search_processor_val.get_processed_path()
+    # proc_val = PostProcess(input_val, output_val)
+    # proc_val.write_processed_file()
 
-    input_test, output_test = beam_Search_processor_test.get_processed_path()
-    proc_test = PostProcess(input_test, output_test)
-    proc_test.write_processed_file()
-    print('Done!\n')
+    # input_test, output_test = beam_Search_processor_test.get_processed_path()
+    # proc_test = PostProcess(input_test, output_test)
+    # proc_test.write_processed_file()
+    # print('Done!\n')

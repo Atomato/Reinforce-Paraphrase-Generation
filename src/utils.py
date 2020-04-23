@@ -107,12 +107,12 @@ def write_for_result(input_sents, reference_sents, decoded_words, _result_path, 
   decoded_s = reverse_tokenizer(decoded_sents[0])
 
   if os.path.isfile(_result_path):
-    with open(_result_path, "a") as f:
+    with open(_result_path, "a", encoding='utf-8') as f:
       print("x:\t" + input_s, file=f)
       if data_class == 'val': print("y:\t" + reference_s, file=f)
       print("y_pred:\t" + decoded_s + "\n", file=f)
   else:
-    with open(_result_path, "w") as f:
+    with open(_result_path, "w", encoding='utf-8') as f:
       print("x:\t" + input_s, file=f)
       if data_class == 'val': print("y:\t" + reference_s, file=f)
       print("y_pred:\t" + decoded_s + "\n", file=f)

@@ -21,8 +21,9 @@ class Example(object):
     article_words = article.split()
     # if len(article_words) > config.max_enc_steps:
     #   article_words = article_words[:config.max_enc_steps]
-    self.enc_len = len(article_words) # store the length after truncation but before padding
-    self.enc_input = [vocab.word2id(w) for w in article_words] # list of word ids; OOVs are represented by the id for UNK token
+    _enc_input = [vocab.word2id(w) for w in article_words] # list of word ids; OOVs are represented by the id for UNK token
+    self.enc_input = [start_decoding] + _enc_input
+    self.enc_len = len(self.enc_input) # store the length after truncation but before padding
     
     # Process the abstract
     abstract = ' '.join(abstract_sentences)
@@ -33,7 +34,7 @@ class Example(object):
     self.dec_input, self.target = self.get_dec_inp_targ_seqs(abs_ids, config.max_dec_steps, start_decoding, stop_decoding)
     self.dec_len = len(self.dec_input)
 
-    self.enc_dec_input, self.enc_dec_target = self.get_dec_inp_targ_seqs(self.enc_input + [stop_decoding] + abs_ids, config.max_enc_dec_steps, start_decoding, stop_decoding)
+    self.enc_dec_input, self.enc_dec_target = self.get_dec_inp_targ_seqs(_enc_input + [stop_decoding] + abs_ids, config.max_enc_dec_steps, start_decoding, stop_decoding)
     self.enc_dec_len = len(self.enc_dec_input)
 
     # If using pointer-generator mode, we need to store some extra info

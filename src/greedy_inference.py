@@ -15,10 +15,10 @@ from kogpt2.pytorch_kogpt2 import get_pytorch_kogpt2_model
 from model import Model
 import torch
 
-TO_TOKEN = {'(수식)': '<expr>', '(미지수)': '<unvar>', '(화살표)': '<arrw>'}
-FROM_TOKEN = {'<expr>': '(수식)', '<unvar>': '(미지수)', '<arrw>': '(화살표)'}
+TO_TOKEN = {'(수식)': '<expr>', '(미지수)': '<unvar>', '(화살표)': '<arrw>', '(등호)': '<equl>'}
+FROM_TOKEN = {'<expr>': '(수식)', '<unvar>': '(미지수)', '<arrw>': '(화살표)', '<equl>': '(등호)'}
 
-class PostProcess():
+class Greedy():
     def __init__(self, input_path_or_input_list, output_path):
         # load file to process
         if isinstance(input_path_or_input_list, str): # if a path is given as path string
@@ -40,7 +40,7 @@ class PostProcess():
         self.inst_dict = {}
 
         _, self.vocab = get_pytorch_kogpt2_model()
-        model_file_path = "../log/KoGPT2_fine/best_model/model_best_4800"
+        model_file_path = "../log/KoGPT2_fine/best_model/model_best_3300"
         self.model = Model(model_file_path, is_eval=True)
         self.model = self.model.kogpt2.cpu()
 
@@ -56,7 +56,7 @@ class PostProcess():
           if gen == '</s>':
               break
           sent += gen.replace('▁', ' ')
-          toked += [gen] # tok(sent)
+          toked += [gen]
           
         return sent
 
@@ -89,7 +89,7 @@ class PostProcess():
             line = self.from_token(line)
             if idx % 4 == 0: orig_txt = line
             line = self.process_by_idx(idx,line,orig_txt)
-            line = self.to_token(line)
+            # line = self.to_token(line)
             self.map_dict_by_idx(idx,line)
             if idx % 4 == 3: # if reading an instance ends
                 sent_bleu = nltk.translate.bleu_score.sentence_bleu([self.tokenizer(self.inst_dict['y'])],
@@ -118,10 +118,10 @@ class PostProcess():
 
 def main():
     root_dir = os.getcwd()
-    input_path = os.path.join(root_dir,'result_model_best_5500_test.txt')
+    input_path = os.path.join(root_dir,'result_model_best_5500_val.txt')
     now = datetime.datetime.now()
-    proc = PostProcess(input_path_or_input_list=input_path, output_path = 'processed_{:02d}{:02d}{:02d}{:02d}.txt'.format(now.month,now.day,now.hour,now.minute))
-    proc.write_processed_file()
+    greedy = Greedy(input_path_or_input_list=input_path, output_path = 'processed_{:02d}{:02d}{:02d}{:02d}.txt'.format(now.month,now.day,now.hour,now.minute))
+    greedy.write_processed_file()
 
 if __name__ == '__main__':
     main()

@@ -95,9 +95,8 @@ class Train(object):
 
         self.optimizer.zero_grad()
         
-        # print(enc_dec_batch, enc_dec_batch.shape)
         final_dist_batch, _ = self.model.kogpt2(enc_dec_batch) # B x L x V
-        probs = torch.gather(final_dist_batch, 2, enc_dec_target_batch.unsqueeze(2)).squeeze() # B x L
+        probs = torch.gather(final_dist_batch, 2, enc_dec_target_batch.unsqueeze(2)).squeeze(2) # B x L
         step_nll = -torch.log(probs + config.eps) # B x L
         batch_loss = torch.sum(step_nll, dim=1)  # B
         loss = torch.mean(batch_loss)
