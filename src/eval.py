@@ -37,8 +37,9 @@ class Evaluate(object):
             s_t_1 = self.model.reduce_state(encoder_hidden)
     
             step_losses = []
+            y_t_1 = torch.LongTensor()
             for di in range(min(max_dec_len, config.max_dec_steps)):
-                y_t_1 = dec_batch[:, di]  # Teacher forcing
+                y_t_1 = torch.cat((y_t_1, dec_batch[:, di].unsqueeze(1)),1) if config.ELMo_to_decoder else dec_batch[:, di]
                 final_dist, s_t_1, c_t_1,attn_dist, p_gen, next_coverage = self.model.decoder(y_t_1, s_t_1,
                                                             encoder_outputs, encoder_feature, enc_padding_mask, c_t_1,
                                                             extra_zeros, enc_batch_extend_vocab, coverage, di)

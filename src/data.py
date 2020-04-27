@@ -17,7 +17,6 @@ START_DECODING = '[CLS]' # This has a vocab id, which is used at the start of ev
 STOP_DECODING = '[SEP]' # This has a vocab id, which is used at the end of untruncated target sequences
 # Note: none of <s>, </s>, [PAD], [UNK], [START], [STOP] should appear in the vocab file.
 
-
 class Vocab(object):
   def __init__(self, vocab_file, max_size):
     tokenizer = get_tokenizer()

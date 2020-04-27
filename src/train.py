@@ -73,11 +73,16 @@ class Train(object):
         torch.save(state, train_model_path)
         return train_model_path
     
+    def print_trainable_params(self, model):
+        for name, params in model.named_parameters():
+            if params.requires_grad:
+                print(name)
 
     def setup_train(self, model_file_path=None, emb_v_path=None, emb_list_path = None, vocab = None, log=None):
         self.model = Model(model_file_path)
         params = list(self.model.encoder.parameters()) + list(self.model.decoder.parameters()) + \
                  list(self.model.reduce_state.parameters())
+                
         initial_lr = config.lr_coverage if config.is_coverage else config.lr
         if config.mode == 'MLE':
             self.optimizer = Adagrad(params, lr=0.15, initial_accumulator_value=0.1)
@@ -108,13 +113,14 @@ class Train(object):
         gen_summary = torch.LongTensor(config.batch_size*[config.sample_size*[[2]]]) # B x S x 1
         if use_cuda: gen_summary = gen_summary.cuda()
         preds_y = gen_summary.squeeze(2) # B x S
+        y_t_1 = torch.LongTensor()
         for di in range(min(config.max_dec_steps, dec_batch.size(1))):
             # Select the current input word
             p1 = np.random.uniform()
             if p1 < alpha: # use ground truth word
-                y_t_1 = dec_batch[:, di]
+                y_t_1 = torch.cat((y_t_1, dec_batch[:, di].unsqueeze(1)),1) if config.ELMo_to_decoder else dec_batch[:, di]
             else: # use decoded word
-                y_t_1 = preds_y[:, 0]
+                y_t_1 = torch.cat((y_t_1, preds_y[:, 0].unsqueeze(1)),1) if config.ELMo_to_decoder else preds_y[:, 0]
             
             final_dist, s_t_1,  c_t_1, attn_dist, p_gen, next_coverage = self.model.decoder(y_t_1, s_t_1,
                                                         encoder_outputs, encoder_feature, enc_padding_mask, 
@@ -132,6 +138,9 @@ class Train(object):
             # Compute the NLL
             probs = torch.gather(final_dist, 1, sampled_batch).squeeze()
             step_nll = -torch.log(probs + config.eps)
+            
+            step_mask = dec_padding_mask[:, di]
+            step_nll = step_nll * step_mask.unsqueeze(1)
             
             if config.is_coverage:
                 step_coverage_loss = torch.sum(torch.min(attn_dist, coverage), 1)
@@ -184,6 +193,7 @@ class Train(object):
 
         cur_time = time.time()
         while iter < n_iters:
+#            print(iter)
             if config.mode == 'RL':
                 alpha = 0.
                 beta = 0.

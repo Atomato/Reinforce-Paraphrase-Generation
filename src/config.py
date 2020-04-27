@@ -20,6 +20,7 @@ log_root = os.path.join(root_dir, "log/DistilKoBERT")
 
 # Hyperparameters
 mode = "MLE"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*
+ELMo_to_decoder = False
 alpha = 1.0
 beta = 1.0
 k1 = 0.995 # 0.9999
@@ -36,7 +37,7 @@ beam_size= 8
 min_dec_steps= 5
 vocab_size= 8002 # 5000
 
-max_iterations = 5000000
+max_iterations = 500000
 lr = 1e-5
 pointer_gen = True
 is_coverage = False

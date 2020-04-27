@@ -6,12 +6,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from kobert_transformers import get_distilkobert_model
+from transformers import DistilBertModel
 
 use_cuda = config.use_gpu and torch.cuda.is_available()
-torch.manual_seed(123)
+torch.manual_seed(321)
+
 if torch.cuda.is_available():
-    torch.cuda.manual_seed_all(123)
+    torch.cuda.manual_seed_all(321)
 
 def init_lstm_wt(lstm):
     for names in lstm._all_weights:
@@ -41,25 +42,80 @@ def init_wt_unif(wt):
 class DistilKoBERT_Embedding(nn.Module):
     def __init__(self):
         super(DistilKoBERT_Embedding, self).__init__()
-        self.model = get_distilkobert_model()
-
+#        self.model = get_distilkobert_model()
+        self.model = DistilBertModel.from_pretrained('monologg/distilkobert', output_hidden_states=True)
+        self.lm_layers = self.model.config.n_layers+1
+        self.freeze_language_model()
+        
+        self.lambda_i = nn.Parameter(torch.Tensor(self.lm_layers).fill_(1.0), requires_grad=True)
+        self.gamma = nn.Parameter(torch.Tensor(1).fill_(1.0), requires_grad=True)
+        
+    def freeze_language_model(self):
+        for param in self.model.parameters():
+            param.requires_grad = False
+        self.model.eval()
+        
     def gen_attention_mask(self, token_ids, valid_length):
         attention_mask = torch.zeros_like(token_ids)
         for i, v in enumerate(valid_length):
             attention_mask[i][:v] = 1
+            
         return attention_mask.float()
 
-    def forward(self, input, seq_lens=None, decoder=False):
-        if not decoder:
-            attention_mask = self.gen_attention_mask(input.float(), seq_lens)
-            output = self.model(input_ids=input, attention_mask=attention_mask)[0]
+    def ELMo_embedding(self, bert_output, channelwise_weights=False):
+        if channelwise_weights:
+            z = torch.sum(torch.exp(self.lambda_i), 1)
         else:
-            output = torch.zeros(input.size(0), config.emb_dim)
-            for idx, inp in enumerate(input):
-                output[idx] = self.model(input_ids=inp.unsqueeze(0).unsqueeze(1))[0]
+            z = torch.sum(torch.exp(self.lambda_i), 0)
+            
+        layer_norm = nn.LayerNorm(bert_output[1][0].shape[1:], elementwise_affine=False)
+        out_sum = torch.Tensor()
+        for i, out in enumerate(bert_output[1]):
+            normalized_out = layer_norm(out)
+            out_sum = torch.cat((out_sum, normalized_out.unsqueeze(0).transpose(0,1)), 1)
+            
+        if channelwise_weights:
+            ELMo = torch.sum(torch.mul(self.lambda_i/z.unsqueeze(1), out_sum.transpose(1,2)), 2) * self.gamma
+        else:
+            ELMo = torch.sum(torch.mul((self.lambda_i/z).unsqueeze(1), out_sum.transpose(1,2)), 2) * self.gamma
+        return ELMo
+    
+    def forward(self, input, seq_lens=None, decoder=False, channelwise_weights=False):
+        if channelwise_weights:
+            self.lambda_i = nn.Parameter(torch.full((self.lm_layers, config.emb_dim), 1), requires_grad=True)
+        
+        if not decoder:                
+            attention_mask = self.gen_attention_mask(input.float(), seq_lens)
+            bert_output = self.model(input_ids=input, attention_mask=attention_mask)
+            ELMo = self.ELMo_embedding(bert_output, channelwise_weights)
             if use_cuda:
-                output = output.cuda()
-        return output
+                ELMo = ELMo.cuda()
+            return ELMo
+        
+        else:
+            if config.ELMo_to_decoder:
+                if seq_lens is None:
+                    seq_lens=torch.LongTensor([input.shape[1]]*input.shape[0])
+                attention_mask = self.gen_attention_mask(input.float(), seq_lens)
+                bert_output = self.model(input_ids=input, attention_mask=attention_mask)
+                ELMo = self.ELMo_embedding(bert_output, channelwise_weights)
+                ELMo_last = torch.Tensor()
+                for b_embed in ELMo:
+                    ELMo_last = torch.cat((ELMo_last, b_embed[-1].unsqueeze(0)), 0)
+                if use_cuda:
+                    ELMo_last = ELMo_last.cuda() 
+                return ELMo_last
+        
+            else:
+                EL_output = torch.zeros(input.size(0), config.emb_dim)
+                for idx, inp in enumerate(input):
+                    EL_output[idx] = self.model(input_ids=inp.unsqueeze(0).unsqueeze(1))[1][0].squeeze(1)
+                if use_cuda:
+                    EL_output = EL_output.cuda()
+                return EL_output
+            
+        #encoder : (B,max_len) --> (B,max_len,E)
+        #decoder : (B,len) --> (B,len,E)의 마지막 (B,E)
 
 class Encoder(nn.Module):
     def __init__(self):
@@ -217,8 +273,6 @@ class Model(object):
             self.encoder = encoder.train()
             self.decoder = decoder.train()
             self.reduce_state = reduce_state.train()
-            self.encoder.embedding.eval()
-            self.decoder.embedding.eval()
 
         if use_cuda:
             self.encoder = encoder.cuda()

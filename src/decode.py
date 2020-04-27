@@ -103,12 +103,13 @@ class BeamSearch(object):
                  for _ in range(config.beam_size)]
         results = []
         steps = 0
+        y_t_1 = torch.LongTensor()
         while steps < config.max_dec_steps and len(results) < config.beam_size:
             latest_tokens = [h.latest_token for h in beams]
             latest_tokens = [t if t < self.vocab.size() else self.vocab.word2id(data.UNKNOWN_TOKEN) \
                              for t in latest_tokens]
 
-            y_t_1 = Variable(torch.LongTensor(latest_tokens))
+            y_t_1 = torch.cat((y_t_1, Variable(torch.LongTensor(latest_tokens)).unsqueeze(1)),1) if config.ELMo_to_decoder else Variable(torch.LongTensor(latest_tokens))
             if use_cuda:
                 y_t_1 = y_t_1.cuda()
             all_state_h =[]
@@ -239,12 +240,12 @@ class BeamSearch(object):
         return input_path, output_path
 
 if __name__ == '__main__':
-    model_filename = sys.argv[1]
+#    model_filename = sys.argv[1]
+    model_filename = '../log/DistilKoBERT/train_model/model_best_6300'
     beam_Search_processor_val = BeamSearch(model_filename, config.eval_data_path)
     print('Decoding validation set...')
     beam_Search_processor_val.decode()
     print('Done!\n')
-
 
     beam_Search_processor_test = BeamSearch(model_filename, config.decode_data_path,
                                                                 data_class='test')
