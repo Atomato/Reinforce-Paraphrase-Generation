@@ -71,7 +71,7 @@ class Train(object):
         return train_model_path
     
 
-    def setup_train(self, model_file_path=None, emb_v_path=None, emb_list_path = None, vocab = None, log=None):
+    def setup_train(self, model_file_path=None, vocab = None, log=None):
         self.model = Model(model_file_path)
         params = list(self.model.kogpt2.parameters())
         initial_lr = config.lr_coverage if config.is_coverage else config.lr
@@ -118,7 +118,7 @@ class Train(object):
         log_path = os.path.join(config.log_root, 'log')
         log = open(log_path, 'w')
         print_log("==============================", file=log)
-        iter, running_avg_loss = self.setup_train(model_file_path, emb_v_path=config.emb_v_path, emb_list_path=config.vocab_path, vocab=self.vocab, log=log)
+        iter, running_avg_loss = self.setup_train(model_file_path, vocab=self.vocab, log=log)
         min_val_loss = np.inf
         
         alpha = config.alpha
