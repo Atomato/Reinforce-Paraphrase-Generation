@@ -3,6 +3,7 @@ from __future__ import unicode_literals, print_function, division
 
 import sys
 import os
+os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 import time
 
 import torch
@@ -73,7 +74,6 @@ class BeamSearch(object):
 
         self.model = Model(model_file_path, is_eval=True)
 
-
     def sort_beams(self, beams):
         return sorted(beams, key=lambda h: h.avg_log_prob, reverse=True)
 
@@ -83,72 +83,73 @@ class BeamSearch(object):
         enc_batch, enc_padding_mask, enc_lens, enc_batch_extend_vocab, extra_zeros, c_t_0, coverage_t_0 = \
             get_input_from_batch(batch, use_cuda)
 
-        # past: 12 tensor of shape (2 x B x 12 x L x 64)
-        _, past = self.model.kogpt2(enc_batch)
-
-        # decoder batch preparation, it has beam_size example initially everything is repeated
-        beams = [Beam(tokens=[self.vocab.word2id(data.STOP_DECODING)],
-                      log_probs=[0.0],
-                      past=tuple(p[:, 0] for p in past))
-                 for _ in range(config.beam_size)]
-        results = []
-        steps = 0
-        while steps < config.max_dec_steps and len(results) < config.beam_size:
-            latest_tokens = [h.latest_token for h in beams]
-            latest_tokens = [t if t < self.vocab.size() else self.vocab.word2id(data.UNKNOWN_TOKEN) \
-                             for t in latest_tokens]
-
-            # B x 1
-            input_ids = Variable(torch.LongTensor(latest_tokens).unsqueeze(1))
-            if use_cuda:
-                input_ids = input_ids.cuda()
-
-            # 12 x []
-            all_past = [[] for _ in range(len(beams[0].past))]
-
-            for h in beams:
-                # h.past: 12 tensor of shape (2 x 12 x L x 64)
-                for i, pt in enumerate(h.past):
-                    all_past[i].append(h.past[i])
-
-            past = []
-            for pt in all_past:
-                past.append(torch.stack(pt, 1))
-            past = tuple(past) # 12 tensor of shape (2 x B x 12 x L x 64)
-
-            # final_dist: B x 1 x 50000
+        with torch.no_grad():
             # past: 12 tensor of shape (2 x B x 12 x L x 64)
-            final_dist, past = self.model.kogpt2(input_ids, past=past)
+            _, past = self.model.kogpt2(enc_batch)
 
-            log_probs = torch.log(final_dist.squeeze(1)) # B x 50000
-            # topk_log_probs, topk_ids: B x 2B
-            topk_log_probs, topk_ids = torch.topk(log_probs, config.beam_size * 2)
+            # decoder batch preparation, it has beam_size example initially everything is repeated
+            beams = [Beam(tokens=[self.vocab.word2id(data.STOP_DECODING)],
+                          log_probs=[0.0],
+                          past=tuple(p[:, 0] for p in past))
+                     for _ in range(config.beam_size)]
+            results = []
+            steps = 0
+            while steps < config.max_dec_steps and len(results) < config.beam_size:
+                latest_tokens = [h.latest_token for h in beams]
+                latest_tokens = [t if t < self.vocab.size() else self.vocab.word2id(data.UNKNOWN_TOKEN) \
+                                 for t in latest_tokens]
 
-            all_beams = []
-            num_orig_beams = 1 if steps == 0 else len(beams)
-            for i in range(num_orig_beams):
-                h = beams[i]
+                # B x 1
+                input_ids = Variable(torch.LongTensor(latest_tokens).unsqueeze(1))
+                if use_cuda:
+                    input_ids = input_ids.cuda()
 
-                # 12 tensor of shape (2 x 12 x L x 64)
-                past_i = tuple(p[:, i] for p in past)
+                # 12 x []
+                all_past = [[] for _ in range(len(beams[0].past))]
 
-                for j in range(config.beam_size * 2):  # for each of the top 2*beam_size hyps:
-                    new_beam = h.extend(token=topk_ids[i, j].item(),
-                                   log_prob=topk_log_probs[i, j].item(),
-                                   past=past_i)
-                    all_beams.append(new_beam)
+                for h in beams:
+                    # h.past: 12 tensor of shape (2 x 12 x L x 64)
+                    for i, pt in enumerate(h.past):
+                        all_past[i].append(h.past[i])
 
-            beams = []
-            for h in self.sort_beams(all_beams):
-                if h.latest_token == self.vocab.word2id(data.STOP_DECODING):
-                    if steps >= config.min_dec_steps:
-                        results.append(h)
-                else:
-                    beams.append(h)
-                if len(beams) == config.beam_size or len(results) == config.beam_size:
-                    break
+                past = []
+                for pt in all_past:
+                    past.append(torch.stack(pt, 1))
+                past = tuple(past) # 12 tensor of shape (2 x B x 12 x L x 64)
 
-            steps += 1
+                # final_dist: B x 1 x 50000
+                # past: 12 tensor of shape (2 x B x 12 x L x 64)
+                final_dist, past = self.model.kogpt2(input_ids, past=past)
+
+                log_probs = torch.log(final_dist.squeeze(1)) # B x 50000
+                # topk_log_probs, topk_ids: B x 2B
+                topk_log_probs, topk_ids = torch.topk(log_probs, config.beam_size * 2)
+
+                all_beams = []
+                num_orig_beams = 1 if steps == 0 else len(beams)
+                for i in range(num_orig_beams):
+                    h = beams[i]
+
+                    # 12 tensor of shape (2 x 12 x L x 64)
+                    past_i = tuple(p[:, i] for p in past)
+
+                    for j in range(config.beam_size * 2):  # for each of the top 2*beam_size hyps:
+                        new_beam = h.extend(token=topk_ids[i, j].item(),
+                                       log_prob=topk_log_probs[i, j].item(),
+                                       past=past_i)
+                        all_beams.append(new_beam)
+
+                beams = []
+                for h in self.sort_beams(all_beams):
+                    if h.latest_token == self.vocab.word2id(data.STOP_DECODING):
+                        if steps >= config.min_dec_steps:
+                            results.append(h)
+                    else:
+                        beams.append(h)
+                    if len(beams) == config.beam_size or len(results) == config.beam_size:
+                        break
+
+                steps += 1
 
         if len(results) == 0:
             results = beams
