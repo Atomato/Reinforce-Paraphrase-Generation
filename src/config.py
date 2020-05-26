@@ -22,8 +22,6 @@ alpha = 1.0
 beta = 1.0
 k1 = 0.995 # 0.9999
 k2 = 250. # 3000.
-hidden_dim= 256
-emb_dim= 128
 
 # Decrease batch size when mode is not MLE because Adam optimizer needs more memory.
 batch_size= 4 if mode == "MLE" else 2
