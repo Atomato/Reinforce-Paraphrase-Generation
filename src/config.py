@@ -14,7 +14,7 @@ decode_data_path = os.path.join(data_path, "chunked/test_*")
 vocab_path = os.path.join(data_path, "vocab.txt")
 post_process_rule_path = os.path.join(data_path, "post_process_rules.txt")
 
-log_root = os.path.join(root_dir, "log/KoGPT2")
+log_root = os.path.join(root_dir, "log/temp")
 
 # Hyperparameters
 mode = "MLE"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*
@@ -24,7 +24,9 @@ k1 = 0.995 # 0.9999
 k2 = 250. # 3000.
 hidden_dim= 256
 emb_dim= 128
-batch_size= 2
+
+# Decrease batch size when mode is not MLE because Adam optimizer needs more memory.
+batch_size= 4 if mode == "MLE" else 2
 sample_size= 4
 
 max_enc_steps = 150 # 20

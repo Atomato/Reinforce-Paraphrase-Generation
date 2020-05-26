@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from kogpt2.pytorch_kogpt2 import get_pytorch_kogpt2_model
+from kogpt2_mem.pytorch_kogpt2 import get_pytorch_kogpt2_model
 
 use_cuda = config.use_gpu and torch.cuda.is_available()
 torch.manual_seed(123)

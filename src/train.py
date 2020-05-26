@@ -1,6 +1,7 @@
 from __future__ import unicode_literals, print_function, division
 
 import os
+os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 import time
 import argparse
 import shutil
@@ -94,8 +95,9 @@ class Train(object):
             get_inout_from_batch(batch, use_cuda)
 
         self.optimizer.zero_grad()
-        
-        final_dist_batch, _ = self.model.kogpt2(enc_dec_batch) # B x L x V
+
+        final_dist_batch, past = self.model.kogpt2(enc_dec_batch) # B x L x V
+        del past
         probs = torch.gather(final_dist_batch, 2, enc_dec_target_batch.unsqueeze(2)).squeeze(2) # B x L
         step_nll = -torch.log(probs + config.eps) # B x L
         batch_loss = torch.sum(step_nll, dim=1)  # B
