@@ -14,7 +14,7 @@ decode_data_path = os.path.join(data_path, "chunked/test_*")
 vocab_path = os.path.join(data_path, "vocab.txt")
 post_process_rule_path = os.path.join(data_path, "post_process_rules.txt")
 
-log_root = os.path.join(root_dir, "log/temp")
+log_root = os.path.join(root_dir, "log/KoGPT2")
 
 # Hyperparameters
 mode = "MLE"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*
