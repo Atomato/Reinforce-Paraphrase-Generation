@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from kogpt2.pytorch_kogpt2 import get_pytorch_kogpt2_model
+from KoGPT2_ELMo import get_pytorch_kogpt2_model
 
 use_cuda = config.use_gpu and torch.cuda.is_available()
 torch.manual_seed(123)
@@ -182,20 +182,58 @@ class Decoder(nn.Module):
             final_dist = vocab_dist
         return final_dist, s_t, c_t, attn_dist, p_gen, coverage
 
+
 class KoGPT2(nn.Module):
     def __init__(self):
         super(KoGPT2, self).__init__()
         self.kogpt2, self.vocab = get_pytorch_kogpt2_model()
+        self.model_file_path = "../model_best_3300"
+        self.kogpt2_layers = self.kogpt2.config.n_layer+1
+        
+        self.lambda_i = nn.Parameter(torch.Tensor(self.kogpt2_layers).fill_(1.0), requires_grad=True)
+        self.gamma = nn.Parameter(torch.Tensor(1).fill_(1.0), requires_grad=True)
+        
+        self.load_pretrained_model()
+        self.freeze_language_model(config.tune_last_layer)
 
+    def load_pretrained_model(self):
+        state = torch.load(self.model_file_path, map_location= lambda storage, location: storage)
+        state_dict = {k[7:]:v for k,v in state['kogpt2_state_dict'].items()}
+        self.kogpt2.load_state_dict(state_dict)
+        
+    def freeze_language_model(self, tune_last_layer=True):
+        for name, param in self.kogpt2.named_parameters():
+            param.requires_grad = False
+            if tune_last_layer and name == 'transformer.wte.weight':
+                param.requires_grad = True
+        self.kogpt2.eval()
+    
+    def ELMo_embedding(self, layer_outputs):
+        z = torch.sum(torch.exp(self.lambda_i), 0)
+        
+        layer_norm = nn.LayerNorm(layer_outputs[0].shape[1:], elementwise_affine=False)
+        out_sum = torch.Tensor()
+        for i, out in enumerate(layer_outputs):
+            normalized_out = layer_norm(out)
+            out_sum = torch.cat((out_sum, normalized_out.unsqueeze(0).transpose(0,1)), 1)
+            
+        ELMo = torch.sum(torch.mul((self.lambda_i/z).unsqueeze(1), out_sum.transpose(1,2)), 2) * self.gamma
+        
+        return ELMo
+    
     def forward(self, input_ids, past=None):
-        pred, past = self.kogpt2(input_ids=input_ids, past=past) # B x L x V
-        vocab_dist = F.softmax(pred, dim=2) # B x L x V
+        _, past, layer_outputs = self.kogpt2(input_ids=input_ids, past=past) # B x L x V
+        ELMo = self.ELMo_embedding(layer_outputs)
+        lm_logits = self.kogpt2.lm_head(ELMo)
+        vocab_dist = F.softmax(lm_logits, dim=2) # B x L x V(50000)
+        
         return vocab_dist, past
+
 
 class Model(object):
     def __init__(self, model_file_path=None, is_eval=False):
         kogpt2 = KoGPT2()
-        
+
         if is_eval:
             self.kogpt2 = kogpt2.eval()
         else:
@@ -203,7 +241,8 @@ class Model(object):
 
         if use_cuda:
             self.kogpt2 = kogpt2.cuda()
-
+        
         if model_file_path is not None:
             state = torch.load(model_file_path, map_location= lambda storage, location: storage)
             self.kogpt2.load_state_dict(state['kogpt2_state_dict'])
+        

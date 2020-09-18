@@ -16,6 +16,8 @@ post_process_rule_path = os.path.join(data_path, "post_process_rules.txt")
 
 log_root = os.path.join(root_dir, "log/KoGPT2")
 
+tune_last_layer = True
+
 # Hyperparameters
 mode = "MLE"   # other options: RL/GTI/SO/SIO/DAGGER/DAGGER*
 alpha = 1.0
@@ -24,7 +26,7 @@ k1 = 0.995 # 0.9999
 k2 = 250. # 3000.
 hidden_dim= 256
 emb_dim= 128
-batch_size= 2
+batch_size= 8
 sample_size= 4
 
 max_enc_steps = 150 # 20

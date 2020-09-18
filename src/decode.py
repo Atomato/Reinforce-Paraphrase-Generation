@@ -219,7 +219,8 @@ class BeamSearch(object):
         return input_path, output_path
 
 if __name__ == '__main__':
-    model_filename = sys.argv[1]
+    model_filename = "../log/KoGPT2/best_model/model_best_400"
+    # model_filename = sys.argv[1]
     beam_Search_processor_val = BeamSearch(model_filename, config.eval_data_path)
     print('Decoding validation set...')
     beam_Search_processor_val.decode()

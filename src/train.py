@@ -70,6 +70,13 @@ class Train(object):
         torch.save(state, train_model_path)
         return train_model_path
     
+    
+    def print_trainable_params(self, model):
+        for name, params in model.named_parameters():
+            # print(name, params.requires_grad)
+            if params.requires_grad:
+                print(name)
+    
 
     def setup_train(self, model_file_path=None, vocab = None, log=None):
         self.model = Model(model_file_path)

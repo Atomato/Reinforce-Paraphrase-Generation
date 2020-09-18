@@ -55,6 +55,7 @@ class Evaluate(object):
     
 
 if __name__ == '__main__':
+    # model_filename = "../log/KoGPT2/best_model/model_best_400"
     model_filename = sys.argv[1]
     eval_processor = Evaluate(model_filename)
     eval_processor.run_eval()
